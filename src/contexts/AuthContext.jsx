@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 const googleProvider = new GoogleAuthProvider();
@@ -65,7 +65,13 @@ export function AuthProvider({ children }) {
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
           } else {
-            // Qualquer @clouddog.com.br entra como colaborador por padrão
+            // Primeiro login — auto-registrar como colaborador
+            await setDoc(doc(db, 'users', user.uid), {
+              email: user.email,
+              nome: user.displayName || '',
+              role: 'colaborador',
+              createdAt: new Date().toISOString(),
+            });
             setUserRole('colaborador');
           }
         } catch (error) {

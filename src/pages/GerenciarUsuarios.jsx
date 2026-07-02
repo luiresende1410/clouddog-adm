@@ -1,86 +1,60 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Users, Shield, UserCircle, Search, Trash2 } from 'lucide-react';
+import { Shield, ShieldOff, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function GerenciarUsuarios() {
   const [users, setUsers] = useState([]);
-  const [colaboradores, setColaboradores] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formUid, setFormUid] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formRole, setFormRole] = useState('colaborador');
 
   useEffect(() => {
-    fetchData();
+    fetchUsers();
   }, []);
 
-  async function fetchData() {
+  useEffect(() => {
+    if (search.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const term = search.toLowerCase();
+      setFilteredUsers(
+        users.filter(
+          (u) =>
+            u.email.toLowerCase().includes(term) ||
+            (u.nome || '').toLowerCase().includes(term)
+        )
+      );
+    }
+  }, [search, users]);
+
+  async function fetchUsers() {
     try {
-      const [usersSnap, colabSnap] = await Promise.all([
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'colaboradores')),
-      ]);
-      setUsers(usersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setColaboradores(colabSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const snap = await getDocs(collection(db, 'users'));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+      setUsers(list);
     } catch (error) {
-      toast.error('Erro ao carregar dados');
+      toast.error('Erro ao carregar usuários');
       console.error(error);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleAddUser(e) {
-    e.preventDefault();
-    if (!formUid.trim() || !formEmail.trim()) {
-      toast.error('UID e e-mail são obrigatórios');
-      return;
-    }
-
-    try {
-      await setDoc(doc(db, 'users', formUid.trim()), {
-        email: formEmail.trim(),
-        role: formRole,
-      });
-      toast.success('Usuário vinculado!');
-      setShowForm(false);
-      setFormUid('');
-      setFormEmail('');
-      setFormRole('colaborador');
-      fetchData();
-    } catch (error) {
-      toast.error('Erro ao salvar');
-      console.error(error);
-    }
-  }
-
-  async function handleDeleteUser(userId) {
-    if (!window.confirm('Remover vínculo deste usuário?')) return;
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-      toast.success('Usuário removido');
-      fetchData();
-    } catch (error) {
-      toast.error('Erro ao remover');
-      console.error(error);
-    }
-  }
-
-  async function handleToggleRole(user) {
+  async function toggleRole(user) {
     const newRole = user.role === 'admin' ? 'colaborador' : 'admin';
-    if (!window.confirm(`Alterar role de ${user.email} para "${newRole}"?`)) return;
+    const action = newRole === 'admin' ? 'promover a Admin' : 'rebaixar a Colaborador';
+
+    if (!window.confirm(`Deseja ${action} o usuário ${user.email}?`)) return;
+
     try {
-      await setDoc(doc(db, 'users', user.id), {
-        email: user.email,
-        role: newRole,
-      });
-      toast.success(`Role alterada para ${newRole}`);
-      fetchData();
+      await updateDoc(doc(db, 'users', user.id), { role: newRole });
+      toast.success(`${user.email} agora é ${newRole}!`);
+      fetchUsers();
     } catch (error) {
-      toast.error('Erro ao alterar role');
+      toast.error('Erro ao alterar permissão');
       console.error(error);
     }
   }
@@ -97,70 +71,104 @@ export default function GerenciarUsuarios() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Gerenciar Usuários</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Users size={20} />
-          Vincular Usuário
-        </button>
       </div>
 
       {/* Instruções */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-        <h3 className="font-medium text-blue-800 mb-2">Como criar acesso para um colaborador:</h3>
-        <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-          <li>No Firebase Console → Authentication → Adicionar usuário (com e-mail do colaborador)</li>
-          <li>Copie o UID gerado</li>
-          <li>Clique em "Vincular Usuário" acima e preencha o UID, e-mail e role</li>
-          <li>O colaborador poderá fazer login e ver seu perfil</li>
-        </ol>
+        <h3 className="font-medium text-blue-800 mb-2">Como funciona:</h3>
+        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+          <li>Qualquer pessoa com e-mail <strong>@clouddog.com.br</strong> pode fazer login com Google</li>
+          <li>No primeiro login, o usuário é registrado automaticamente como <strong>Colaborador</strong></li>
+          <li>Para promover a <strong>Admin</strong>, clique no ícone de escudo ao lado do nome</li>
+          <li>Admins podem acessar todos os módulos. Colaboradores veem apenas o próprio perfil.</li>
+        </ul>
       </div>
 
-      {/* Lista de usuários */}
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={20} className="absolute left-3 top-2.5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar por nome ou e-mail..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        />
+      </div>
+
+      {/* Stats */}
+      <div className="flex gap-4 mb-4">
+        <span className="text-sm text-gray-500">
+          {users.length} usuários registrados
+        </span>
+        <span className="text-sm text-purple-600 font-medium">
+          {users.filter((u) => u.role === 'admin').length} admins
+        </span>
+      </div>
+
+      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Nome</th>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">E-mail</th>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">UID</th>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Role</th>
-              <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Ações</th>
+              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Desde</th>
+              <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Ação</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-400">
-                  Nenhum usuário vinculado
+                <td colSpan={5} className="text-center py-8 text-gray-400">
+                  Nenhum usuário encontrado. Os usuários aparecem aqui após o primeiro login.
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-gray-800">{user.email}</td>
-                  <td className="px-6 py-4 text-gray-500 text-sm font-mono">{user.id.substring(0, 12)}...</td>
+                  <td className="px-6 py-4 font-medium text-gray-800">
+                    {user.nome || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{user.email}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {user.role}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-gray-500 text-sm">
+                    {user.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString('pt-BR')
+                      : '-'}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <button
-                      onClick={() => handleToggleRole(user)}
-                      className="text-purple-600 hover:text-purple-800 mr-3"
-                      title="Alternar role"
+                      onClick={() => toggleRole(user)}
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        user.role === 'admin'
+                          ? 'bg-red-50 text-red-700 hover:bg-red-100'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                      }`}
+                      title={user.role === 'admin' ? 'Rebaixar a Colaborador' : 'Promover a Admin'}
                     >
-                      <Shield size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Remover"
-                    >
-                      <Trash2 size={18} />
+                      {user.role === 'admin' ? (
+                        <>
+                          <ShieldOff size={16} />
+                          Rebaixar
+                        </>
+                      ) : (
+                        <>
+                          <Shield size={16} />
+                          Promover
+                        </>
+                      )}
                     </button>
                   </td>
                 </tr>
@@ -169,73 +177,6 @@ export default function GerenciarUsuarios() {
           </tbody>
         </table>
       </div>
-
-      {/* Modal Form */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Vincular Usuário</h3>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label htmlFor="uid" className="block text-sm font-medium text-gray-700 mb-1">
-                  UID (do Firebase Authentication) *
-                </label>
-                <input
-                  id="uid"
-                  value={formUid}
-                  onChange={(e) => setFormUid(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="Cole o UID do Firebase Auth"
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  E-mail *
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="email@empresa.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  id="role"
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="colaborador">Colaborador</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Vincular
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
