@@ -141,20 +141,20 @@ export default function Dashboard() {
 
       {/* Cards principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={Users} color="bg-blue-500" title="Colaboradores" value={stats.totalColaboradores} subtitle={`${stats.ativos} ativos`} />
-        <StatCard icon={Laptop} color="bg-purple-500" title="Equipamentos" value={stats.equipamentos} subtitle={stats.equipamentosSemVinculo > 0 ? `${stats.equipamentosSemVinculo} sem vínculo` : 'Todos vinculados'} />
-        <StatCard icon={CreditCard} color="bg-green-500" title="VT + VR Mensal" value={`R$ ${(stats.totalVTMensal + stats.totalVRMensal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} subtitle={`VT: R$ ${stats.totalVTMensal.toFixed(0)} | VR: R$ ${stats.totalVRMensal.toFixed(0)}`} />
-        <StatCard icon={Calendar} color="bg-orange-500" title="Férias" value={stats.feriasEmAndamento.length} subtitle={`${stats.feriasAgendadas.length} agendadas`} />
+        <StatCard icon={Users} color="bg-blue-500" title="Colaboradores" value={stats.totalColaboradores} subtitle={`${stats.ativos} ativos`} onClick={() => navigate('/colaboradores')} />
+        <StatCard icon={Laptop} color="bg-purple-500" title="Equipamentos" value={stats.equipamentos} subtitle={stats.equipamentosSemVinculo > 0 ? `${stats.equipamentosSemVinculo} sem vínculo` : 'Todos vinculados'} onClick={() => navigate('/equipamentos')} />
+        <StatCard icon={CreditCard} color="bg-green-500" title="VT + VR Mensal" value={`R$ ${(stats.totalVTMensal + stats.totalVRMensal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} subtitle={`VT: R$ ${stats.totalVTMensal.toFixed(0)} | VR: R$ ${stats.totalVRMensal.toFixed(0)}`} onClick={() => navigate('/beneficios')} />
+        <StatCard icon={Calendar} color="bg-orange-500" title="Férias" value={stats.feriasEmAndamento.length} subtitle={`${stats.feriasAgendadas.length} agendadas`} onClick={() => navigate('/ferias')} />
       </div>
 
       {/* Cards secundários */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
-        <MiniCard label="CLT" value={stats.clt} />
-        <MiniCard label="Estágio" value={stats.estagiarios} />
-        <MiniCard label="PJ" value={stats.pj} />
-        <MiniCard label="Inativos" value={stats.inativos} alert={stats.inativos > 0} />
+        <MiniCard label="CLT" value={stats.clt} onClick={() => navigate('/colaboradores')} />
+        <MiniCard label="Estágio" value={stats.estagiarios} onClick={() => navigate('/colaboradores')} />
+        <MiniCard label="PJ" value={stats.pj} onClick={() => navigate('/colaboradores')} />
+        <MiniCard label="Inativos" value={stats.inativos} alert={stats.inativos > 0} onClick={() => navigate('/colaboradores')} />
         {Object.entries(stats.setores).sort((a, b) => b[1] - a[1]).map(([setor, count]) => (
-          <MiniCard key={setor} label={setor} value={count} />
+          <MiniCard key={setor} label={setor} value={count} onClick={() => navigate('/colaboradores')} />
         ))}
       </div>
 
@@ -265,9 +265,12 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon: Icon, color, title, value, subtitle }) {
+function StatCard({ icon: Icon, color, title, value, subtitle, onClick }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+    <div
+      onClick={onClick}
+      className="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+    >
       <div className={`${color} p-3 rounded-lg`}>
         <Icon size={22} className="text-white" />
       </div>
@@ -280,9 +283,12 @@ function StatCard({ icon: Icon, color, title, value, subtitle }) {
   );
 }
 
-function MiniCard({ label, value, alert }) {
+function MiniCard({ label, value, alert, onClick }) {
   return (
-    <div className={`rounded-xl p-3 text-center ${alert ? 'bg-red-50 border border-red-200' : 'bg-white shadow-sm'}`}>
+    <div
+      onClick={onClick}
+      className={`rounded-xl p-3 text-center cursor-pointer hover:scale-[1.03] transition-all ${alert ? 'bg-red-50 border border-red-200 hover:bg-red-100' : 'bg-white shadow-sm hover:shadow-md'}`}
+    >
       <p className={`text-lg font-bold ${alert ? 'text-red-700' : 'text-gray-800'}`}>{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>
