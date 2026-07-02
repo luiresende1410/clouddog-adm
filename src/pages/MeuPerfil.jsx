@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 import {
   UserCircle,
   Briefcase,
@@ -12,6 +13,9 @@ import {
   ArrowRightLeft,
   DollarSign,
   Award,
+  Pencil,
+  X,
+  Camera,
 } from 'lucide-react';
 
 const TIPO_HISTORICO = {
@@ -28,6 +32,15 @@ export default function MeuPerfil() {
   const [beneficios, setBeneficios] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({
+    fotoUrl: '',
+    telefone: '',
+    gestor: '',
+    linkedin: '',
+    github: '',
+    credly: '',
+  });
 
   useEffect(() => {
     async function fetchMeusDados() {
@@ -69,6 +82,39 @@ export default function MeuPerfil() {
     }
   }, [currentUser]);
 
+  function openEditForm() {
+    setEditForm({
+      fotoUrl: dados.fotoUrl || '',
+      telefone: dados.telefone || '',
+      gestor: dados.gestor || '',
+      linkedin: dados.linkedin || '',
+      github: dados.github || '',
+      credly: dados.credly || '',
+    });
+    setShowEditForm(true);
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    try {
+      await updateDoc(doc(db, 'colaboradores', dados.id), {
+        fotoUrl: editForm.fotoUrl,
+        telefone: editForm.telefone,
+        gestor: editForm.gestor,
+        linkedin: editForm.linkedin,
+        github: editForm.github,
+        credly: editForm.credly,
+        updatedAt: new Date().toISOString(),
+      });
+      setDados({ ...dados, ...editForm });
+      setShowEditForm(false);
+      toast.success('Perfil atualizado!');
+    } catch (error) {
+      toast.error('Erro ao salvar');
+      console.error(error);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -101,14 +147,31 @@ export default function MeuPerfil() {
 
       {/* Header do perfil */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <UserCircle size={40} className="text-blue-600" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            {dados.fotoUrl ? (
+              <img
+                src={dados.fotoUrl}
+                alt={dados.nome}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserCircle size={40} className="text-blue-600" />
+              </div>
+            )}
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">{dados.nome}</h3>
+              <p className="text-gray-500">{dados.cargo} — {dados.setor}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">{dados.nome}</h3>
-            <p className="text-gray-500">{dados.cargo} — {dados.setor}</p>
-          </div>
+          <button
+            onClick={openEditForm}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-sm"
+          >
+            <Pencil size={16} />
+            Editar
+          </button>
         </div>
 
         {/* Dados pessoais */}
@@ -118,13 +181,12 @@ export default function MeuPerfil() {
           <InfoItem label="Contrato" value={dados.tipoContrato} />
           <InfoItem icon={Calendar} label="Admissão" value={dados.dataAdmissao ? new Date(dados.dataAdmissao).toLocaleDateString('pt-BR') : '-'} />
           <InfoItem label="Efetivação" value={dados.dataEfetivacao ? new Date(dados.dataEfetivacao).toLocaleDateString('pt-BR') : '-'} />
-          <InfoItem label="Status" value={dados.status} />
+          <InfoItem label="Telefone" value={dados.telefone || '-'} />
         </div>
       </div>
 
       {/* Cards de Férias e Benefícios */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Férias */}
         {feriasAtiva ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
             <p className="text-xs font-medium text-yellow-600 uppercase">Férias em andamento</p>
@@ -148,7 +210,6 @@ export default function MeuPerfil() {
           </div>
         )}
 
-        {/* VT */}
         {vt ? (
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs font-medium text-gray-500 uppercase">Vale Transporte</p>
@@ -169,7 +230,6 @@ export default function MeuPerfil() {
           </div>
         )}
 
-        {/* VR */}
         {vr ? (
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs font-medium text-gray-500 uppercase">Vale Refeição</p>
@@ -310,6 +370,129 @@ export default function MeuPerfil() {
           </div>
         )}
       </div>
+
+      {/* Modal de edição */}
+      {showEditForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Editar Meu Perfil</h3>
+              <button onClick={() => setShowEditForm(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label htmlFor="fotoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                  Foto (URL da imagem)
+                </label>
+                <div className="flex items-center gap-3">
+                  {editForm.fotoUrl ? (
+                    <img src={editForm.fotoUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Camera size={20} className="text-gray-400" />
+                    </div>
+                  )}
+                  <input
+                    id="fotoUrl"
+                    type="url"
+                    value={editForm.fotoUrl}
+                    onChange={(e) => setEditForm({ ...editForm, fotoUrl: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    placeholder="https://link-da-foto.com/foto.jpg"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Pode usar link do Google Drive, GitHub avatar, etc.</p>
+              </div>
+
+              <div>
+                <label htmlFor="telefone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone
+                </label>
+                <input
+                  id="telefone"
+                  type="tel"
+                  value={editForm.telefone}
+                  onChange={(e) => setEditForm({ ...editForm, telefone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="gestor" className="block text-sm font-medium text-gray-700 mb-1">
+                  Gestor
+                </label>
+                <input
+                  id="gestor"
+                  type="text"
+                  value={editForm.gestor}
+                  onChange={(e) => setEditForm({ ...editForm, gestor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="Nome do seu gestor"
+                />
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">Links profissionais</p>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="linkedin" className="block text-xs text-gray-500 mb-1">LinkedIn</label>
+                    <input
+                      id="linkedin"
+                      type="url"
+                      value={editForm.linkedin}
+                      onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://linkedin.com/in/seu-perfil"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="github" className="block text-xs text-gray-500 mb-1">GitHub</label>
+                    <input
+                      id="github"
+                      type="url"
+                      value={editForm.github}
+                      onChange={(e) => setEditForm({ ...editForm, github: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://github.com/seu-usuario"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="credly" className="block text-xs text-gray-500 mb-1">Credly (Certificações)</label>
+                    <input
+                      id="credly"
+                      type="url"
+                      value={editForm.credly}
+                      onChange={(e) => setEditForm({ ...editForm, credly: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://www.credly.com/users/seu-perfil"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditForm(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

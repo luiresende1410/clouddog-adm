@@ -15,14 +15,18 @@ service cloud.firestore {
 
     // Users - admin pode ler/escrever, usuário pode ler o próprio
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // Colaboradores - admin tem acesso total, colaborador pode ler o próprio (por email)
+    // Colaboradores - admin tem acesso total, colaborador pode editar campos limitados do próprio perfil
     match /colaboradores/{colaboradorId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+      allow update: if isAuthenticated() &&
+        resource.data.email == request.auth.token.email &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fotoUrl', 'telefone', 'gestor', 'linkedin', 'github', 'credly', 'updatedAt']);
 
       // Histórico (sub-coleção)
       match /historico/{historicoId} {
@@ -45,6 +49,18 @@ service cloud.firestore {
 
     // Férias - admin tem acesso total, colaborador pode ler
     match /ferias/{feriaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Config - admin pode ler/escrever
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Fechamentos - admin pode ler/escrever
+    match /fechamentos/{fechId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
