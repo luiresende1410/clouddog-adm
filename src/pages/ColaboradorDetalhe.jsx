@@ -157,6 +157,104 @@ export default function ColaboradorDetalhe() {
         />
       </div>
 
+      {/* Links e informações adicionais */}
+      {(colaborador.linkedin || colaborador.github || colaborador.credly || colaborador.googleDriveLink || colaborador.curriculoUrl || colaborador.jobConvoResultado) && (
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Links e Informações</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {colaborador.linkedin && (
+              <a
+                href={colaborador.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">in</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">LinkedIn</p>
+                  <p className="text-xs text-gray-500">Ver perfil</p>
+                </div>
+              </a>
+            )}
+            {colaborador.github && (
+              <a
+                href={colaborador.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">GH</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">GitHub</p>
+                  <p className="text-xs text-gray-500">Ver repositórios</p>
+                </div>
+              </a>
+            )}
+            {colaborador.credly && (
+              <a
+                href={colaborador.credly}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-orange-500 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">C</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Credly</p>
+                  <p className="text-xs text-gray-500">Ver certificações</p>
+                </div>
+              </a>
+            )}
+            {colaborador.googleDriveLink && (
+              <a
+                href={colaborador.googleDriveLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">D</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Google Drive</p>
+                  <p className="text-xs text-gray-500">Fotos e documentos</p>
+                </div>
+              </a>
+            )}
+            {colaborador.curriculoUrl && (
+              <a
+                href={colaborador.curriculoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">CV</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Currículo</p>
+                  <p className="text-xs text-gray-500">Abrir PDF</p>
+                </div>
+              </a>
+            )}
+          </div>
+
+          {colaborador.jobConvoResultado && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Resultado Job Convo</h4>
+              <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                {colaborador.jobConvoResultado}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Histórico */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">

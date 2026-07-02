@@ -93,6 +93,69 @@ export default function MeuPerfil() {
           <InfoItem label="Telefone" value={dados.telefone || '-'} />
         </div>
       </div>
+
+      {/* Links e informações */}
+      {(dados.linkedin || dados.github || dados.credly || dados.googleDriveLink || dados.curriculoUrl || dados.jobConvoResultado) && (
+        <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Links e Informações</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {dados.linkedin && (
+              <a href={dados.linkedin} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">in</span>
+                </div>
+                <span className="text-sm font-medium text-gray-800">LinkedIn</span>
+              </a>
+            )}
+            {dados.github && (
+              <a href={dados.github} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">GH</span>
+                </div>
+                <span className="text-sm font-medium text-gray-800">GitHub</span>
+              </a>
+            )}
+            {dados.credly && (
+              <a href={dados.credly} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <div className="w-8 h-8 bg-orange-500 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">C</span>
+                </div>
+                <span className="text-sm font-medium text-gray-800">Certificações (Credly)</span>
+              </a>
+            )}
+            {dados.googleDriveLink && (
+              <a href={dados.googleDriveLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">D</span>
+                </div>
+                <span className="text-sm font-medium text-gray-800">Google Drive</span>
+              </a>
+            )}
+            {dados.curriculoUrl && (
+              <a href={dados.curriculoUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">CV</span>
+                </div>
+                <span className="text-sm font-medium text-gray-800">Currículo (PDF)</span>
+              </a>
+            )}
+          </div>
+
+          {dados.jobConvoResultado && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Resultado Job Convo</h4>
+              <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                {dados.jobConvoResultado}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

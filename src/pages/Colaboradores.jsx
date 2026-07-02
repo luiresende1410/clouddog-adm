@@ -26,6 +26,12 @@ const emptyForm = {
   tipoContrato: 'CLT',
   status: 'ativo',
   telefone: '',
+  linkedin: '',
+  github: '',
+  credly: '',
+  jobConvoResultado: '',
+  googleDriveLink: '',
+  curriculoUrl: '',
 };
 
 export default function Colaboradores() {
@@ -94,6 +100,12 @@ export default function Colaboradores() {
       tipoContrato: colab.tipoContrato || 'CLT',
       status: colab.status || 'ativo',
       telefone: colab.telefone || '',
+      linkedin: colab.linkedin || '',
+      github: colab.github || '',
+      credly: colab.credly || '',
+      jobConvoResultado: colab.jobConvoResultado || '',
+      googleDriveLink: colab.googleDriveLink || '',
+      curriculoUrl: colab.curriculoUrl || '',
     });
     setEditingId(colab.id);
     setShowForm(true);
@@ -431,6 +443,97 @@ export default function Colaboradores() {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Links e informações adicionais */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Links e Informações Adicionais</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700 mb-1">
+                      LinkedIn
+                    </label>
+                    <input
+                      id="linkedin"
+                      name="linkedin"
+                      type="url"
+                      value={form.linkedin}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://linkedin.com/in/..."
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="github" className="block text-sm font-medium text-gray-700 mb-1">
+                      GitHub
+                    </label>
+                    <input
+                      id="github"
+                      name="github"
+                      type="url"
+                      value={form.github}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://github.com/..."
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="credly" className="block text-sm font-medium text-gray-700 mb-1">
+                      Credly (Certificações)
+                    </label>
+                    <input
+                      id="credly"
+                      name="credly"
+                      type="url"
+                      value={form.credly}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://www.credly.com/users/..."
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="googleDriveLink" className="block text-sm font-medium text-gray-700 mb-1">
+                      Google Drive (Fotos/Docs)
+                    </label>
+                    <input
+                      id="googleDriveLink"
+                      name="googleDriveLink"
+                      type="url"
+                      value={form.googleDriveLink}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://drive.google.com/..."
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="curriculoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                      Currículo (PDF - link)
+                    </label>
+                    <input
+                      id="curriculoUrl"
+                      name="curriculoUrl"
+                      type="url"
+                      value={form.curriculoUrl}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="https://drive.google.com/...curriculo.pdf"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="jobConvoResultado" className="block text-sm font-medium text-gray-700 mb-1">
+                      Resultado Job Convo
+                    </label>
+                    <textarea
+                      id="jobConvoResultado"
+                      name="jobConvoResultado"
+                      value={form.jobConvoResultado}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="Resultado dos testes do Job Convo..."
+                    />
+                  </div>
                 </div>
               </div>
 
