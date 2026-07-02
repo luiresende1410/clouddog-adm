@@ -7,6 +7,8 @@ import { UserCircle, Briefcase, Calendar, Building } from 'lucide-react';
 export default function MeuPerfil() {
   const { currentUser } = useAuth();
   const [dados, setDados] = useState(null);
+  const [ferias, setFerias] = useState([]);
+  const [beneficios, setBeneficios] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +20,18 @@ export default function MeuPerfil() {
         );
         const snap = await getDocs(q);
         if (!snap.empty) {
-          setDados({ id: snap.docs[0].id, ...snap.docs[0].data() });
+          const colabData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          setDados(colabData);
+
+          // Buscar férias
+          const ferSnap = await getDocs(collection(db, 'ferias'));
+          const allFerias = ferSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setFerias(allFerias.filter((f) => f.colaboradorId === colabData.id));
+
+          // Buscar benefícios ativos
+          const benSnap = await getDocs(collection(db, 'beneficios'));
+          const allBen = benSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setBeneficios(allBen.filter((b) => b.colaboradorId === colabData.id && !b.dataFim));
         }
       } catch (error) {
         console.error('Erro ao buscar dados:', error);
@@ -65,6 +78,89 @@ export default function MeuPerfil() {
             <h3 className="text-xl font-bold text-gray-800">{dados.nome}</h3>
             <p className="text-gray-500">{dados.cargo}</p>
           </div>
+        </div>
+
+        {/* Cards de Férias e Benefícios */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-100">
+          {/* Férias */}
+          {(() => {
+            const hoje = new Date().toISOString().split('T')[0];
+            const feriasAtiva = ferias.find((f) => f.status === 'Em andamento' || (f.dataInicio <= hoje && f.dataFim >= hoje));
+            const feriasAgendada = ferias.find((f) => f.status === 'Agendada' && f.dataInicio > hoje);
+
+            if (feriasAtiva) {
+              return (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <p className="text-xs font-medium text-yellow-600 uppercase">Férias em andamento</p>
+                  <p className="text-sm font-bold text-yellow-800 mt-1">
+                    {new Date(feriasAtiva.dataInicio).toLocaleDateString('pt-BR')} → {new Date(feriasAtiva.dataFim).toLocaleDateString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">{feriasAtiva.diasGozados} dias</p>
+                </div>
+              );
+            }
+            if (feriasAgendada) {
+              return (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-xs font-medium text-blue-600 uppercase">Férias agendada</p>
+                  <p className="text-sm font-bold text-blue-800 mt-1">
+                    {new Date(feriasAgendada.dataInicio).toLocaleDateString('pt-BR')} → {new Date(feriasAgendada.dataFim).toLocaleDateString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">{feriasAgendada.diasGozados} dias</p>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-gray-500 uppercase">Férias</p>
+                <p className="text-xs text-gray-400 mt-1">Sem férias agendadas</p>
+              </div>
+            );
+          })()}
+
+          {/* VT */}
+          {(() => {
+            const vt = beneficios.find((b) => b.tipo === 'VT');
+            if (vt) {
+              return (
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase">Vale Transporte</p>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <div>
+                      <span className="text-lg font-bold text-gray-800">R$ {Number(vt.valorDiario).toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 ml-1">/dia</span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      R$ {Number(vt.valorMensal || vt.valorDiario * 22).toFixed(2)}<span className="text-xs">/mês</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          {/* VR */}
+          {(() => {
+            const vr = beneficios.find((b) => b.tipo === 'VR' || b.tipo === 'VA');
+            if (vr) {
+              return (
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase">Vale Refeição</p>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <div>
+                      <span className="text-lg font-bold text-gray-800">R$ {Number(vr.valorDiario).toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 ml-1">/dia</span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      R$ {Number(vr.valorMensal || vr.valorDiario * 22).toFixed(2)}<span className="text-xs">/mês</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

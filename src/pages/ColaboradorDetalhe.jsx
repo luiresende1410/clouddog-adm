@@ -39,6 +39,8 @@ export default function ColaboradorDetalhe() {
   const navigate = useNavigate();
   const [colaborador, setColaborador] = useState(null);
   const [historico, setHistorico] = useState([]);
+  const [ferias, setFerias] = useState([]);
+  const [beneficios, setBeneficios] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyHistorico);
   const [loading, setLoading] = useState(true);
@@ -46,6 +48,8 @@ export default function ColaboradorDetalhe() {
   useEffect(() => {
     fetchColaborador();
     fetchHistorico();
+    fetchFerias();
+    fetchBeneficios();
   }, [id]);
 
   async function fetchColaborador() {
@@ -59,6 +63,26 @@ export default function ColaboradorDetalhe() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchFerias() {
+    try {
+      const snap = await getDocs(collection(db, 'ferias'));
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setFerias(all.filter((f) => f.colaboradorId === id));
+    } catch (error) {
+      console.error('Erro ao buscar férias:', error);
+    }
+  }
+
+  async function fetchBeneficios() {
+    try {
+      const snap = await getDocs(collection(db, 'beneficios'));
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setBeneficios(all.filter((b) => b.colaboradorId === id && !b.dataFim));
+    } catch (error) {
+      console.error('Erro ao buscar benefícios:', error);
     }
   }
 
@@ -144,7 +168,7 @@ export default function ColaboradorDetalhe() {
       </div>
 
       {/* Info cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <InfoCard label="Status" value={colaborador.status} />
         <InfoCard label="Contrato" value={colaborador.tipoContrato} />
         <InfoCard
@@ -155,6 +179,99 @@ export default function ColaboradorDetalhe() {
           label="Efetivação"
           value={colaborador.dataEfetivacao ? new Date(colaborador.dataEfetivacao).toLocaleDateString('pt-BR') : '-'}
         />
+      </div>
+
+      {/* Férias e Benefícios cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Férias */}
+        {(() => {
+          const hoje = new Date().toISOString().split('T')[0];
+          const feriasAtiva = ferias.find((f) => f.status === 'Em andamento' || (f.dataInicio <= hoje && f.dataFim >= hoje));
+          const feriasAgendada = ferias.find((f) => f.status === 'Agendada' && f.dataInicio > hoje);
+
+          if (feriasAtiva) {
+            return (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-yellow-600 uppercase">Férias em andamento</p>
+                <p className="text-lg font-bold text-yellow-800 mt-1">
+                  {new Date(feriasAtiva.dataInicio).toLocaleDateString('pt-BR')} → {new Date(feriasAtiva.dataFim).toLocaleDateString('pt-BR')}
+                </p>
+                <p className="text-sm text-yellow-600 mt-1">{feriasAtiva.diasGozados} dias</p>
+              </div>
+            );
+          }
+          if (feriasAgendada) {
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-blue-600 uppercase">Férias agendada</p>
+                <p className="text-lg font-bold text-blue-800 mt-1">
+                  {new Date(feriasAgendada.dataInicio).toLocaleDateString('pt-BR')} → {new Date(feriasAgendada.dataFim).toLocaleDateString('pt-BR')}
+                </p>
+                <p className="text-sm text-blue-600 mt-1">{feriasAgendada.diasGozados} dias</p>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Férias</p>
+              <p className="text-sm text-gray-600 mt-1">Sem férias agendadas</p>
+            </div>
+          );
+        })()}
+
+        {/* VT */}
+        {(() => {
+          const vt = beneficios.find((b) => b.tipo === 'VT');
+          if (vt) {
+            return (
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-gray-500 uppercase">Vale Transporte</p>
+                <div className="flex items-baseline gap-3 mt-1">
+                  <div>
+                    <span className="text-lg font-bold text-gray-800">R$ {Number(vt.valorDiario).toFixed(2)}</span>
+                    <span className="text-xs text-gray-500 ml-1">/dia</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    R$ {Number(vt.valorMensal || vt.valorDiario * 22).toFixed(2)}<span className="text-xs">/mês</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Vale Transporte</p>
+              <p className="text-sm text-gray-400 mt-1">Não cadastrado</p>
+            </div>
+          );
+        })()}
+
+        {/* VR */}
+        {(() => {
+          const vr = beneficios.find((b) => b.tipo === 'VR' || b.tipo === 'VA');
+          if (vr) {
+            return (
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs font-medium text-gray-500 uppercase">Vale Refeição</p>
+                <div className="flex items-baseline gap-3 mt-1">
+                  <div>
+                    <span className="text-lg font-bold text-gray-800">R$ {Number(vr.valorDiario).toFixed(2)}</span>
+                    <span className="text-xs text-gray-500 ml-1">/dia</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    R$ {Number(vr.valorMensal || vr.valorDiario * 22).toFixed(2)}<span className="text-xs">/mês</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Vale Refeição</p>
+              <p className="text-sm text-gray-400 mt-1">Não cadastrado</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Links e informações adicionais */}
