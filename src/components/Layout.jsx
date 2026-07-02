@@ -73,6 +73,10 @@ export default function Layout() {
                 <Shield size={20} />
                 Usuários
               </NavLink>
+              <NavLink to="/meu-perfil" className={linkClass}>
+                <UserCircle size={20} />
+                Meu Perfil
+              </NavLink>
             </>
           ) : (
             <NavLink to="/meu-perfil" className={linkClass}>
