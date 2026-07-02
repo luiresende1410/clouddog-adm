@@ -17,6 +17,7 @@ import {
   ArrowRightLeft,
   DollarSign,
   Clock,
+  Award,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ const TIPO_HISTORICO = [
   { value: 'promocao', label: 'Promoção', icon: TrendingUp, color: 'bg-green-100 text-green-800' },
   { value: 'movimentacao', label: 'Movimentação', icon: ArrowRightLeft, color: 'bg-blue-100 text-blue-800' },
   { value: 'reajuste', label: 'Reajuste', icon: DollarSign, color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'certificacao', label: 'Certificação', icon: Award, color: 'bg-purple-100 text-purple-800' },
 ];
 
 const emptyHistorico = {
@@ -421,8 +423,17 @@ export default function ColaboradorDetalhe() {
                       </div>
                       {(h.de || h.para) && (
                         <p className="text-sm text-gray-700 mt-2">
-                          <span className="text-gray-500">De:</span> {h.de || '-'}{' '}
-                          <span className="text-gray-500">→ Para:</span> {h.para || '-'}
+                          {h.tipo === 'certificacao' ? (
+                            <>
+                              <span className="font-medium">{h.de}</span>
+                              {h.para && <span className="text-gray-500"> — {h.para}</span>}
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-500">De:</span> {h.de || '-'}{' '}
+                              <span className="text-gray-500">→ Para:</span> {h.para || '-'}
+                            </>
+                          )}
                         </p>
                       )}
                       {h.descricao && (
@@ -473,25 +484,29 @@ export default function ColaboradorDetalhe() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="de" className="block text-sm font-medium text-gray-700 mb-1">De</label>
+                  <label htmlFor="de" className="block text-sm font-medium text-gray-700 mb-1">
+                    {form.tipo === 'certificacao' ? 'Certificação' : 'De'}
+                  </label>
                   <input
                     id="de"
                     name="de"
                     value={form.de}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    placeholder="Cargo/setor anterior"
+                    placeholder={form.tipo === 'certificacao' ? 'Nome da certificação' : 'Cargo/setor anterior'}
                   />
                 </div>
                 <div>
-                  <label htmlFor="para" className="block text-sm font-medium text-gray-700 mb-1">Para</label>
+                  <label htmlFor="para" className="block text-sm font-medium text-gray-700 mb-1">
+                    {form.tipo === 'certificacao' ? 'Emissor' : 'Para'}
+                  </label>
                   <input
                     id="para"
                     name="para"
                     value={form.para}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    placeholder="Cargo/setor novo"
+                    placeholder={form.tipo === 'certificacao' ? 'AWS, Azure, Google...' : 'Cargo/setor novo'}
                   />
                 </div>
               </div>
