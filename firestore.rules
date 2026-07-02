@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Função auxiliar: verifica se o usuário é admin
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Função auxiliar: verifica se está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users - admin pode ler/escrever, usuário pode ler o próprio
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Colaboradores - admin tem acesso total, colaborador pode ler o próprio (por email)
+    match /colaboradores/{colaboradorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+
+      // Histórico (sub-coleção)
+      match /historico/{historicoId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+    }
+
+    // Equipamentos - admin tem acesso total, colaborador pode ler
+    match /equipamentos/{equipId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Benefícios - admin tem acesso total, colaborador pode ler
+    match /beneficios/{beneficioId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Férias - admin tem acesso total, colaborador pode ler
+    match /ferias/{feriaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
