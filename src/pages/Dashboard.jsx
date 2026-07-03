@@ -149,12 +149,12 @@ export default function Dashboard() {
 
       {/* Cards secundários */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
-        <MiniCard label="CLT" value={stats.clt} onClick={() => navigate('/colaboradores')} />
-        <MiniCard label="Estágio" value={stats.estagiarios} onClick={() => navigate('/colaboradores')} />
-        <MiniCard label="PJ" value={stats.pj} onClick={() => navigate('/colaboradores')} />
-        <MiniCard label="Inativos" value={stats.inativos} alert={stats.inativos > 0} onClick={() => navigate('/colaboradores')} />
+        <MiniCard label="CLT" value={stats.clt} onClick={() => navigate('/colaboradores?contrato=CLT')} />
+        <MiniCard label="Estágio" value={stats.estagiarios} onClick={() => navigate('/colaboradores?contrato=Estágio')} />
+        <MiniCard label="PJ" value={stats.pj} onClick={() => navigate('/colaboradores?contrato=PJ')} />
+        <MiniCard label="Inativos" value={stats.inativos} alert={stats.inativos > 0} onClick={() => navigate('/colaboradores?status=inativo')} />
         {Object.entries(stats.setores).sort((a, b) => b[1] - a[1]).map(([setor, count]) => (
-          <MiniCard key={setor} label={setor} value={count} onClick={() => navigate('/colaboradores')} />
+          <MiniCard key={setor} label={setor} value={count} onClick={() => navigate(`/colaboradores?setor=${encodeURIComponent(setor)}`)} />
         ))}
       </div>
 

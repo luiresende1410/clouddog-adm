@@ -10,7 +10,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const STATUS_OPTIONS = ['ativo', 'inativo', 'afastado', 'ferias'];
 const CONTRATO_OPTIONS = ['CLT', 'PJ', 'Estágio', 'Temporário'];
@@ -36,12 +36,13 @@ const emptyForm = {
 
 export default function Colaboradores() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [colaboradores, setColaboradores] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterSetor, setFilterSetor] = useState('');
-  const [filterContrato, setFilterContrato] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+  const [filterSetor, setFilterSetor] = useState(searchParams.get('setor') || '');
+  const [filterContrato, setFilterContrato] = useState(searchParams.get('contrato') || '');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
