@@ -249,7 +249,7 @@ export default function MeuPerfil() {
       </div>
 
       {/* Links e informações */}
-      {(dados.linkedin || dados.github || dados.credly || dados.googleDriveLink || dados.curriculoUrl || dados.jobConvoResultado) && (
+      {(dados.linkedin || dados.github || dados.credly || dados.googleDriveLink || dados.curriculoUrl) && (
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <h3 className="text-lg font-bold text-gray-800 mb-4">Links e Informações</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -299,15 +299,6 @@ export default function MeuPerfil() {
               </a>
             )}
           </div>
-
-          {dados.jobConvoResultado && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Resultado Job Convo</h4>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
-                {dados.jobConvoResultado}
-              </p>
-            </div>
-          )}
         </div>
       )}
 

@@ -29,7 +29,9 @@ const emptyForm = {
   linkedin: '',
   github: '',
   credly: '',
-  jobConvoResultado: '',
+  raciocinoLogico: '',
+  fitCultural: '',
+  personalidade: '',
   googleDriveLink: '',
   curriculoUrl: '',
 };
@@ -127,7 +129,9 @@ export default function Colaboradores() {
       linkedin: colab.linkedin || '',
       github: colab.github || '',
       credly: colab.credly || '',
-      jobConvoResultado: colab.jobConvoResultado || '',
+      raciocinoLogico: colab.raciocinoLogico || '',
+      fitCultural: colab.fitCultural || '',
+      personalidade: colab.personalidade || '',
       googleDriveLink: colab.googleDriveLink || '',
       curriculoUrl: colab.curriculoUrl || '',
     });
@@ -602,18 +606,50 @@ export default function Colaboradores() {
                       placeholder="https://drive.google.com/...curriculo.pdf"
                     />
                   </div>
+                  <div>
+                    <label htmlFor="raciocinoLogico" className="block text-sm font-medium text-gray-700 mb-1">
+                      Raciocínio Lógico (%)
+                    </label>
+                    <input
+                      id="raciocinoLogico"
+                      name="raciocinoLogico"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={form.raciocinoLogico}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="Ex: 85"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="fitCultural" className="block text-sm font-medium text-gray-700 mb-1">
+                      Fit Cultural (%)
+                    </label>
+                    <input
+                      id="fitCultural"
+                      name="fitCultural"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={form.fitCultural}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="Ex: 92"
+                    />
+                  </div>
                   <div className="md:col-span-2">
-                    <label htmlFor="jobConvoResultado" className="block text-sm font-medium text-gray-700 mb-1">
-                      Resultado Job Convo
+                    <label htmlFor="personalidade" className="block text-sm font-medium text-gray-700 mb-1">
+                      Personalidade
                     </label>
                     <textarea
-                      id="jobConvoResultado"
-                      name="jobConvoResultado"
-                      value={form.jobConvoResultado}
+                      id="personalidade"
+                      name="personalidade"
+                      value={form.personalidade}
                       onChange={handleChange}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Resultado dos testes do Job Convo..."
+                      placeholder="Perfil de personalidade do colaborador..."
                     />
                   </div>
                 </div>
