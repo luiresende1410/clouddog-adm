@@ -12,10 +12,12 @@ import { Plus, Pencil, Trash2, Search, X, Calendar, Calculator } from 'lucide-re
 import toast from 'react-hot-toast';
 
 const STATUS_OPTIONS = ['Agendada', 'Em andamento', 'Concluída', 'Cancelada'];
+const TIPO_FERIAS = ['Férias', 'Emenda de Feriado'];
 
 const emptyForm = {
   colaboradorId: '',
   colaboradorNome: '',
+  tipo: 'Férias',
   periodoAquisitivoInicio: '',
   periodoAquisitivoFim: '',
   dataInicio: '',
@@ -141,9 +143,13 @@ export default function Ferias() {
           f.dataInicio <= periodo.fim
       );
 
-      const diasGozados = feriasNoPeriodo.reduce((s, f) => s + (Number(f.diasGozados) || 0), 0);
+      const feriasRegulares = feriasNoPeriodo.filter((f) => f.tipo !== 'Emenda de Feriado');
+      const emendas = feriasNoPeriodo.filter((f) => f.tipo === 'Emenda de Feriado');
+
+      const diasGozados = feriasRegulares.reduce((s, f) => s + (Number(f.diasGozados) || 0), 0);
+      const diasEmendas = emendas.reduce((s, f) => s + (Number(f.diasGozados) || 0), 0);
       const diasVendidos = feriasNoPeriodo.reduce((s, f) => s + (Number(f.diasVendidos) || 0), 0);
-      const saldo = 30 - diasGozados - diasVendidos;
+      const saldo = 30 - diasGozados - diasEmendas - diasVendidos;
 
       // Verificar se férias estão vencendo (período concessivo = 12 meses após fim do aquisitivo)
       const fimAquisitivo = new Date(periodo.fim);
@@ -159,6 +165,7 @@ export default function Ferias() {
         periodoInicio: periodo.inicio,
         periodoFim: periodo.fim,
         diasGozados,
+        diasEmendas,
         diasVendidos,
         saldo,
         diasParaVencer,
@@ -194,14 +201,34 @@ export default function Ferias() {
       }
 
       setForm(updated);
+    } else if (name === 'tipo') {
+      const updated = { ...form, tipo: value };
+      // Se emenda, auto-preencher 1 dia e status concluída
+      if (value === 'Emenda de Feriado') {
+        updated.diasGozados = '1';
+        updated.diasVendidos = '0';
+        updated.status = 'Concluída';
+        if (updated.dataInicio && !updated.dataFim) {
+          updated.dataFim = updated.dataInicio;
+        }
+      }
+      setForm(updated);
     } else {
       const updated = { ...form, [name]: value };
       if (name === 'dataInicio' || name === 'dataFim') {
-        const dias = calcDias(
-          name === 'dataInicio' ? value : form.dataInicio,
-          name === 'dataFim' ? value : form.dataFim
-        );
-        if (dias > 0) updated.diasGozados = String(dias);
+        if (form.tipo === 'Emenda de Feriado') {
+          // Emenda: data fim = data inicio
+          if (name === 'dataInicio') {
+            updated.dataFim = value;
+            updated.diasGozados = '1';
+          }
+        } else {
+          const dias = calcDias(
+            name === 'dataInicio' ? value : form.dataInicio,
+            name === 'dataFim' ? value : form.dataFim
+          );
+          if (dias > 0) updated.diasGozados = String(dias);
+        }
       }
       setForm(updated);
     }
@@ -217,6 +244,7 @@ export default function Ferias() {
     setForm({
       colaboradorId: fer.colaboradorId || '',
       colaboradorNome: fer.colaboradorNome || '',
+      tipo: fer.tipo || 'Férias',
       periodoAquisitivoInicio: fer.periodoAquisitivoInicio || '',
       periodoAquisitivoFim: fer.periodoAquisitivoFim || '',
       dataInicio: fer.dataInicio || '',
@@ -233,8 +261,8 @@ export default function Ferias() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!form.colaboradorId || !form.dataInicio || !form.dataFim) {
-      toast.error('Colaborador, data início e data fim são obrigatórios');
+    if (!form.colaboradorId || !form.dataInicio) {
+      toast.error('Colaborador e data início são obrigatórios');
       return;
     }
 
@@ -345,9 +373,9 @@ export default function Ferias() {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Colaborador</th>
+              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Tipo</th>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Período</th>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Dias</th>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Vendidos</th>
               <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Status</th>
               <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Ações</th>
             </tr>
@@ -364,13 +392,17 @@ export default function Ferias() {
               filteredList.map((fer) => (
                 <tr key={fer.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-800">{fer.colaboradorNome}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${fer.tipo === 'Emenda de Feriado' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {fer.tipo || 'Férias'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-gray-600">
                     {fer.dataInicio ? new Date(fer.dataInicio).toLocaleDateString('pt-BR') : '-'}
                     {' → '}
                     {fer.dataFim ? new Date(fer.dataFim).toLocaleDateString('pt-BR') : '-'}
                   </td>
                   <td className="px-6 py-4 text-gray-600">{fer.diasGozados || '-'}</td>
-                  <td className="px-6 py-4 text-gray-600">{fer.diasVendidos || '0'}</td>
                   <td className="px-6 py-4">{statusBadge(fer.status)}</td>
                   <td className="px-6 py-4 text-right">
                     <button onClick={() => openEditForm(fer)} className="text-blue-600 hover:text-blue-800 mr-3" title="Editar">
@@ -417,6 +449,7 @@ export default function Ferias() {
                   <th className="text-left px-4 py-2 text-sm font-medium text-gray-500">Colaborador</th>
                   <th className="text-left px-4 py-2 text-sm font-medium text-gray-500">Período Aquisitivo</th>
                   <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Gozados</th>
+                  <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Emendas</th>
                   <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Vendidos</th>
                   <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Saldo</th>
                   <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Status</th>
@@ -433,6 +466,7 @@ export default function Ferias() {
                       {new Date(s.periodoInicio).toLocaleDateString('pt-BR')} → {new Date(s.periodoFim).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-gray-600">{s.diasGozados}</td>
+                    <td className="px-4 py-3 text-center text-sm text-orange-600">{s.diasEmendas}</td>
                     <td className="px-4 py-3 text-center text-sm text-gray-600">{s.diasVendidos}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-block px-2 py-1 rounded-full text-sm font-bold ${
@@ -495,6 +529,24 @@ export default function Ferias() {
                     <option key={c.id} value={c.id}>{c.nome}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label htmlFor="tipo" className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select
+                  id="tipo"
+                  name="tipo"
+                  value={form.tipo}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                >
+                  {TIPO_FERIAS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                {form.tipo === 'Emenda de Feriado' && (
+                  <p className="text-xs text-orange-600 mt-1">Emenda: debita 1 dia do saldo de férias do colaborador.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
