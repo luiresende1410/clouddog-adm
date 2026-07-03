@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
@@ -34,9 +33,7 @@ export default function MeuPerfil() {
   const [historico, setHistorico] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [editForm, setEditForm] = useState({
-    fotoUrl: '',
     telefone: '',
     gestor: '',
     linkedin: '',
@@ -86,7 +83,6 @@ export default function MeuPerfil() {
 
   function openEditForm() {
     setEditForm({
-      fotoUrl: dados.fotoUrl || '',
       telefone: dados.telefone || '',
       gestor: dados.gestor || '',
       linkedin: dados.linkedin || '',
@@ -96,39 +92,10 @@ export default function MeuPerfil() {
     setShowEditForm(true);
   }
 
-  async function handleFotoUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Selecione um arquivo de imagem');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Imagem deve ter no máximo 5MB');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const fileRef = ref(storage, `fotos-colaboradores/${dados.id}_${Date.now()}`);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      setEditForm({ ...editForm, fotoUrl: url });
-      toast.success('Foto carregada!');
-    } catch (error) {
-      toast.error('Erro ao enviar foto');
-      console.error(error);
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function handleSaveEdit(e) {
     e.preventDefault();
     try {
       await updateDoc(doc(db, 'colaboradores', dados.id), {
-        fotoUrl: editForm.fotoUrl,
         telefone: editForm.telefone,
         gestor: editForm.gestor,
         linkedin: editForm.linkedin,
@@ -413,33 +380,15 @@ export default function MeuPerfil() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Foto de Perfil
-                </label>
-                <div className="flex items-center gap-4">
-                  {editForm.fotoUrl ? (
-                    <img src={editForm.fotoUrl} alt="Preview" className="w-16 h-16 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Camera size={24} className="text-gray-400" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors text-sm font-medium w-fit">
-                      <Camera size={16} />
-                      {uploading ? 'Enviando...' : 'Carregar foto'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFotoUpload}
-                        disabled={uploading}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG ou GIF. Máx 5MB.</p>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                {dados.fotoUrl ? (
+                  <img src={dados.fotoUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
+                ) : (
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Camera size={20} className="text-gray-400" />
                   </div>
-                </div>
+                )}
+                <p className="text-sm text-gray-500">A foto é sincronizada automaticamente com sua conta Google.</p>
               </div>
 
               <div>

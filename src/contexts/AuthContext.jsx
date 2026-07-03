@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection, query, where, updateDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 const googleProvider = new GoogleAuthProvider();
@@ -69,10 +69,30 @@ export function AuthProvider({ children }) {
             await setDoc(doc(db, 'users', user.uid), {
               email: user.email,
               nome: user.displayName || '',
+              fotoUrl: user.photoURL || '',
               role: 'colaborador',
               createdAt: new Date().toISOString(),
             });
             setUserRole('colaborador');
+          }
+
+          // Atualizar foto do Google no cadastro do colaborador
+          if (user.photoURL) {
+            try {
+              const colabQuery = await getDocs(
+                query(collection(db, 'colaboradores'), where('email', '==', user.email))
+              );
+              if (!colabQuery.empty) {
+                const colabDoc = colabQuery.docs[0];
+                if (!colabDoc.data().fotoUrl || colabDoc.data().fotoUrl !== user.photoURL) {
+                  await updateDoc(doc(db, 'colaboradores', colabDoc.id), {
+                    fotoUrl: user.photoURL,
+                  });
+                }
+              }
+            } catch (e) {
+              // Silencioso - não bloquear login se falhar
+            }
           }
         } catch (error) {
           console.error('Erro ao buscar role do usuário:', error);
