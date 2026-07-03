@@ -39,6 +39,9 @@ export default function Colaboradores() {
   const [colaboradores, setColaboradores] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSetor, setFilterSetor] = useState('');
+  const [filterContrato, setFilterContrato] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -49,20 +52,40 @@ export default function Colaboradores() {
   }, []);
 
   useEffect(() => {
-    if (search.trim() === '') {
-      setFilteredList(colaboradores);
-    } else {
+    let list = colaboradores;
+
+    // Filtro de busca por texto
+    if (search.trim() !== '') {
       const term = search.toLowerCase();
-      setFilteredList(
-        colaboradores.filter(
-          (c) =>
-            c.nome.toLowerCase().includes(term) ||
-            c.cargo.toLowerCase().includes(term) ||
-            c.setor.toLowerCase().includes(term)
-        )
+      list = list.filter(
+        (c) =>
+          c.nome.toLowerCase().includes(term) ||
+          c.cargo.toLowerCase().includes(term) ||
+          c.setor.toLowerCase().includes(term)
       );
     }
-  }, [search, colaboradores]);
+
+    // Filtro por status
+    if (filterStatus) {
+      list = list.filter((c) => c.status === filterStatus);
+    }
+
+    // Filtro por setor
+    if (filterSetor) {
+      list = list.filter((c) => c.setor === filterSetor);
+    }
+
+    // Filtro por contrato
+    if (filterContrato) {
+      list = list.filter((c) => c.tipoContrato === filterContrato);
+    }
+
+    setFilteredList(list);
+  }, [search, filterStatus, filterSetor, filterContrato, colaboradores]);
+
+  // Extrair setores únicos pra o filtro
+  const setoresUnicos = [...new Set(colaboradores.map((c) => c.setor).filter(Boolean))].sort();
+  const contratosUnicos = [...new Set(colaboradores.map((c) => c.tipoContrato).filter(Boolean))].sort();
 
   async function fetchColaboradores() {
     try {
@@ -205,6 +228,55 @@ export default function Colaboradores() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
         />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        >
+          <option value="">Todos os status</option>
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterSetor}
+          onChange={(e) => setFilterSetor(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        >
+          <option value="">Todos os setores</option>
+          {setoresUnicos.map((setor) => (
+            <option key={setor} value={setor}>{setor}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterContrato}
+          onChange={(e) => setFilterContrato(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        >
+          <option value="">Todos os contratos</option>
+          {contratosUnicos.map((ct) => (
+            <option key={ct} value={ct}>{ct}</option>
+          ))}
+        </select>
+
+        {(filterStatus || filterSetor || filterContrato) && (
+          <button
+            onClick={() => { setFilterStatus(''); setFilterSetor(''); setFilterContrato(''); }}
+            className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            Limpar filtros
+          </button>
+        )}
+
+        <span className="flex items-center text-sm text-gray-500 ml-auto">
+          {filteredList.length} de {colaboradores.length} colaboradores
+        </span>
       </div>
 
       {/* Table */}
