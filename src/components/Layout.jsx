@@ -10,6 +10,8 @@ import {
   CreditCard,
   FileText,
   Shield,
+  Award,
+  DollarSign,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -68,6 +70,14 @@ export default function Layout() {
               <NavLink to="/relatorios" className={linkClass}>
                 <FileText size={20} />
                 Relatórios
+              </NavLink>
+              <NavLink to="/certificacoes" className={linkClass}>
+                <Award size={20} />
+                Certificações
+              </NavLink>
+              <NavLink to="/tabela-salarial" className={linkClass}>
+                <DollarSign size={20} />
+                Tabela Salarial
               </NavLink>
               <NavLink to="/usuarios" className={linkClass}>
                 <Shield size={20} />

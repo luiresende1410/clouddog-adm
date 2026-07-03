@@ -16,6 +16,8 @@ import BeneficioVR from './pages/BeneficioVR';
 import BeneficioFechamento from './pages/BeneficioFechamento';
 import Relatorios from './pages/Relatorios';
 import GerenciarUsuarios from './pages/GerenciarUsuarios';
+import Certificacoes from './pages/Certificacoes';
+import TabelaSalarial from './pages/TabelaSalarial';
 
 export default function App() {
   return (
@@ -100,6 +102,22 @@ export default function App() {
               element={
                 <PrivateRoute adminOnly>
                   <GerenciarUsuarios />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/certificacoes"
+              element={
+                <PrivateRoute adminOnly>
+                  <Certificacoes />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tabela-salarial"
+              element={
+                <PrivateRoute adminOnly>
+                  <TabelaSalarial />
                 </PrivateRoute>
               }
             />
