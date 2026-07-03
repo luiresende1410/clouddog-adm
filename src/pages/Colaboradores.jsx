@@ -319,7 +319,16 @@ export default function Colaboradores() {
               filteredList.map((colab) => (
                 <tr key={colab.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-800">
-                    {colab.nome}
+                    <div className="flex items-center gap-3">
+                      {colab.fotoUrl ? (
+                        <img src={colab.fotoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                          {colab.nome?.charAt(0)}
+                        </div>
+                      )}
+                      {colab.nome}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-gray-600">{colab.cargo}</td>
                   <td className="px-6 py-4 text-gray-600">{colab.setor}</td>

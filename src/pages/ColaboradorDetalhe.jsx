@@ -7,12 +7,14 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
   ArrowLeft,
   Plus,
   Trash2,
+  Pencil,
   TrendingUp,
   ArrowRightLeft,
   DollarSign,
@@ -44,6 +46,7 @@ export default function ColaboradorDetalhe() {
   const [ferias, setFerias] = useState([]);
   const [beneficios, setBeneficios] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingHistId, setEditingHistId] = useState(null);
   const [form, setForm] = useState(emptyHistorico);
   const [loading, setLoading] = useState(true);
 
@@ -103,6 +106,18 @@ export default function ColaboradorDetalhe() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
+  function openEditHistorico(h) {
+    setForm({
+      tipo: h.tipo || 'promocao',
+      data: h.data || '',
+      de: h.de || '',
+      para: h.para || '',
+      descricao: h.descricao || '',
+    });
+    setEditingHistId(h.id);
+    setShowForm(true);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.tipo || !form.data) {
@@ -111,13 +126,22 @@ export default function ColaboradorDetalhe() {
     }
 
     try {
-      await addDoc(collection(db, 'colaboradores', id, 'historico'), {
-        ...form,
-        createdAt: new Date().toISOString(),
-      });
-      toast.success('Registro adicionado!');
+      if (editingHistId) {
+        await updateDoc(doc(db, 'colaboradores', id, 'historico', editingHistId), {
+          ...form,
+          updatedAt: new Date().toISOString(),
+        });
+        toast.success('Registro atualizado!');
+      } else {
+        await addDoc(collection(db, 'colaboradores', id, 'historico'), {
+          ...form,
+          createdAt: new Date().toISOString(),
+        });
+        toast.success('Registro adicionado!');
+      }
       setShowForm(false);
       setForm(emptyHistorico);
+      setEditingHistId(null);
       fetchHistorico();
     } catch (error) {
       toast.error('Erro ao salvar');
@@ -382,7 +406,7 @@ export default function ColaboradorDetalhe() {
             Linha do Tempo
           </h3>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setForm(emptyHistorico); setEditingHistId(null); setShowForm(true); }}
             className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
             <Plus size={16} />
@@ -414,12 +438,22 @@ export default function ColaboradorDetalhe() {
                             {h.data ? new Date(h.data).toLocaleDateString('pt-BR') : ''}
                           </span>
                         </div>
-                        <button
-                          onClick={() => handleDeleteHistorico(h.id)}
-                          className="text-red-400 hover:text-red-600"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditHistorico(h)}
+                            className="text-blue-400 hover:text-blue-600"
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteHistorico(h.id)}
+                            className="text-red-400 hover:text-red-600"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                       {(h.de || h.para) && (
                         <p className="text-sm text-gray-700 mt-2">
@@ -452,7 +486,7 @@ export default function ColaboradorDetalhe() {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Novo Registro</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">{editingHistId ? 'Editar Registro' : 'Novo Registro'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -533,7 +567,7 @@ export default function ColaboradorDetalhe() {
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Salvar
+                  {editingHistId ? 'Atualizar' : 'Salvar'}
                 </button>
               </div>
             </form>
