@@ -8,7 +8,7 @@ import {
   doc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Pencil, Trash2, Search, X, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Calendar, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const STATUS_OPTIONS = ['Agendada', 'Em andamento', 'Concluída', 'Cancelada'];
@@ -34,15 +34,41 @@ function calcDias(inicio, fim) {
   return diff > 0 ? diff : 0;
 }
 
+// Calcula o período aquisitivo atual baseado na data de admissão/efetivação
+function calcPeriodoAquisitivo(dataAdmissao) {
+  if (!dataAdmissao) return null;
+  const admissao = new Date(dataAdmissao);
+  const hoje = new Date();
+
+  let inicioAtual = new Date(admissao);
+  while (true) {
+    const proximo = new Date(inicioAtual);
+    proximo.setFullYear(proximo.getFullYear() + 1);
+    if (proximo > hoje) break;
+    inicioAtual = proximo;
+  }
+
+  const fimAtual = new Date(inicioAtual);
+  fimAtual.setFullYear(fimAtual.getFullYear() + 1);
+  fimAtual.setDate(fimAtual.getDate() - 1);
+
+  return {
+    inicio: inicioAtual.toISOString().split('T')[0],
+    fim: fimAtual.toISOString().split('T')[0],
+  };
+}
+
 export default function Ferias() {
   const [ferias, setFerias] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showSaldo, setShowSaldo] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+  const [saldos, setSaldos] = useState([]);
 
   useEffect(() => {
     fetchFerias();
@@ -92,18 +118,84 @@ export default function Ferias() {
     }
   }
 
+  function calcularSaldos() {
+    const hoje = new Date().toISOString().split('T')[0];
+    const result = [];
+
+    for (const colab of colaboradores) {
+      if (colab.status !== 'ativo') continue;
+
+      // Usar dataEfetivacao se existir (CLT), senão dataAdmissao
+      const dataBase = colab.dataEfetivacao || colab.dataAdmissao;
+      if (!dataBase) continue;
+
+      const periodo = calcPeriodoAquisitivo(dataBase);
+      if (!periodo) continue;
+
+      // Buscar férias concluídas ou em andamento no período aquisitivo atual
+      const feriasNoPeriodo = ferias.filter(
+        (f) =>
+          f.colaboradorId === colab.id &&
+          f.status !== 'Cancelada' &&
+          f.dataInicio >= periodo.inicio &&
+          f.dataInicio <= periodo.fim
+      );
+
+      const diasGozados = feriasNoPeriodo.reduce((s, f) => s + (Number(f.diasGozados) || 0), 0);
+      const diasVendidos = feriasNoPeriodo.reduce((s, f) => s + (Number(f.diasVendidos) || 0), 0);
+      const saldo = 30 - diasGozados - diasVendidos;
+
+      // Verificar se férias estão vencendo (período concessivo = 12 meses após fim do aquisitivo)
+      const fimAquisitivo = new Date(periodo.fim);
+      const limiteConcessivo = new Date(fimAquisitivo);
+      limiteConcessivo.setFullYear(limiteConcessivo.getFullYear() + 1);
+      const diasParaVencer = Math.ceil((limiteConcessivo - new Date()) / (1000 * 60 * 60 * 24));
+
+      result.push({
+        colaboradorId: colab.id,
+        nome: colab.nome,
+        setor: colab.setor,
+        dataBase,
+        periodoInicio: periodo.inicio,
+        periodoFim: periodo.fim,
+        diasGozados,
+        diasVendidos,
+        saldo,
+        diasParaVencer,
+        vencendo: diasParaVencer <= 90 && saldo > 0,
+      });
+    }
+
+    result.sort((a, b) => a.nome.localeCompare(b.nome));
+    setSaldos(result);
+    setShowSaldo(true);
+  }
+
   function handleChange(e) {
     const { name, value } = e.target;
     if (name === 'colaboradorId') {
       const colab = colaboradores.find((c) => c.id === value);
-      setForm({
+      const updated = {
         ...form,
         colaboradorId: value,
         colaboradorNome: colab ? colab.nome : '',
-      });
+      };
+
+      // Auto-preencher período aquisitivo
+      if (colab) {
+        const dataBase = colab.dataEfetivacao || colab.dataAdmissao;
+        if (dataBase) {
+          const periodo = calcPeriodoAquisitivo(dataBase);
+          if (periodo) {
+            updated.periodoAquisitivoInicio = periodo.inicio;
+            updated.periodoAquisitivoFim = periodo.fim;
+          }
+        }
+      }
+
+      setForm(updated);
     } else {
       const updated = { ...form, [name]: value };
-      // Auto-calcular dias gozados
       if (name === 'dataInicio' || name === 'dataFim') {
         const dias = calcDias(
           name === 'dataInicio' ? value : form.dataInicio,
@@ -217,13 +309,22 @@ export default function Ferias() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Controle de Férias</h2>
-        <button
-          onClick={openNewForm}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Novo Registro
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={calcularSaldos}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Calculator size={20} />
+            Saldo de Férias
+          </button>
+          <button
+            onClick={openNewForm}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Novo Registro
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -286,6 +387,85 @@ export default function Ferias() {
         </table>
       </div>
 
+      {/* Modal Saldo */}
+      {showSaldo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Saldo de Férias — Período Aquisitivo Atual</h3>
+              <button onClick={() => setShowSaldo(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Baseado na data de efetivação (ou admissão). Cada período de 12 meses dá direito a 30 dias.
+              O saldo reseta a cada novo período aquisitivo.
+            </p>
+
+            {saldos.filter((s) => s.vencendo).length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm font-medium text-red-800">
+                  ⚠️ {saldos.filter((s) => s.vencendo).length} colaborador(es) com férias próximas de vencer (menos de 90 dias para o fim do período concessivo)
+                </p>
+              </div>
+            )}
+
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-2 text-sm font-medium text-gray-500">Colaborador</th>
+                  <th className="text-left px-4 py-2 text-sm font-medium text-gray-500">Período Aquisitivo</th>
+                  <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Gozados</th>
+                  <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Vendidos</th>
+                  <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Saldo</th>
+                  <th className="text-center px-4 py-2 text-sm font-medium text-gray-500">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {saldos.map((s) => (
+                  <tr key={s.colaboradorId} className={`hover:bg-gray-50 ${s.vencendo ? 'bg-red-50' : ''}`}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-800 text-sm">{s.nome}</p>
+                      <p className="text-xs text-gray-400">{s.setor}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {new Date(s.periodoInicio).toLocaleDateString('pt-BR')} → {new Date(s.periodoFim).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-600">{s.diasGozados}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-600">{s.diasVendidos}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-block px-2 py-1 rounded-full text-sm font-bold ${
+                        s.saldo === 0 ? 'bg-green-100 text-green-800' :
+                        s.saldo <= 10 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {s.saldo} dias
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {s.saldo === 0 ? (
+                        <span className="text-xs text-green-600 font-medium">Completo</span>
+                      ) : s.vencendo ? (
+                        <span className="text-xs text-red-600 font-medium">Vencendo!</span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Pendente</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {saldos.length === 0 && (
+              <p className="text-center text-gray-400 py-8">
+                Nenhum colaborador ativo com data de admissão/efetivação cadastrada.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -328,7 +508,7 @@ export default function Ferias() {
                     type="date"
                     value={form.periodoAquisitivoInicio}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50"
                   />
                 </div>
                 <div>
@@ -341,10 +521,16 @@ export default function Ferias() {
                     type="date"
                     value={form.periodoAquisitivoFim}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50"
                   />
                 </div>
               </div>
+
+              {form.periodoAquisitivoInicio && (
+                <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  Período aquisitivo preenchido automaticamente com base na data de efetivação/admissão.
+                </p>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
