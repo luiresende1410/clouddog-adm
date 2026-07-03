@@ -41,6 +41,9 @@ export default function Certificacoes() {
   const [filteredList, setFilteredList] = useState([]);
   const [search, setSearch] = useState('');
   const [filterProvedor, setFilterProvedor] = useState('');
+  const [filterNivel, setFilterNivel] = useState('');
+  const [filterColaborador, setFilterColaborador] = useState('');
+  const [sortBy, setSortBy] = useState('colaborador');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -67,8 +70,37 @@ export default function Certificacoes() {
       list = list.filter((c) => c.provedor === filterProvedor);
     }
 
+    if (filterNivel) {
+      list = list.filter((c) => c.nivel === filterNivel);
+    }
+
+    if (filterColaborador) {
+      list = list.filter((c) => c.colaboradorNome === filterColaborador);
+    }
+
+    // Ordenação
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'colaborador':
+          if (a.colaboradorNome !== b.colaboradorNome) return a.colaboradorNome.localeCompare(b.colaboradorNome);
+          return (a.nome || '').localeCompare(b.nome || '');
+        case 'provedor':
+          if (a.provedor !== b.provedor) return a.provedor.localeCompare(b.provedor);
+          return a.colaboradorNome.localeCompare(b.colaboradorNome);
+        case 'nivel':
+          if (a.nivel !== b.nivel) return a.nivel.localeCompare(b.nivel);
+          return a.colaboradorNome.localeCompare(b.colaboradorNome);
+        case 'certificacao':
+          return (a.nome || '').localeCompare(b.nome || '');
+        case 'data':
+          return (b.dataObtencao || '').localeCompare(a.dataObtencao || '');
+        default:
+          return 0;
+      }
+    });
+
     setFilteredList(list);
-  }, [search, filterProvedor, certificacoes]);
+  }, [search, filterProvedor, filterNivel, filterColaborador, sortBy, certificacoes]);
 
   async function fetchCertificacoes() {
     try {
@@ -256,8 +288,8 @@ export default function Certificacoes() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex gap-3 mb-4">
-        <div className="relative flex-1">
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search size={20} className="absolute left-3 top-2.5 text-gray-400" />
           <input
             type="text"
@@ -270,6 +302,19 @@ export default function Certificacoes() {
         <div className="relative">
           <Filter size={20} className="absolute left-3 top-2.5 text-gray-400" />
           <select
+            value={filterColaborador}
+            onChange={(e) => setFilterColaborador(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
+          >
+            <option value="">Todos colaboradores</option>
+            {[...new Set(certificacoes.map((c) => c.colaboradorNome))].sort().map((nome) => (
+              <option key={nome} value={nome}>{nome}</option>
+            ))}
+          </select>
+        </div>
+        <div className="relative">
+          <Filter size={20} className="absolute left-3 top-2.5 text-gray-400" />
+          <select
             value={filterProvedor}
             onChange={(e) => setFilterProvedor(e.target.value)}
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
@@ -278,6 +323,32 @@ export default function Certificacoes() {
             {PROVEDOR_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
+          </select>
+        </div>
+        <div className="relative">
+          <Filter size={20} className="absolute left-3 top-2.5 text-gray-400" />
+          <select
+            value={filterNivel}
+            onChange={(e) => setFilterNivel(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
+          >
+            <option value="">Todos níveis</option>
+            {NIVEL_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
+          >
+            <option value="colaborador">Ordenar por Colaborador</option>
+            <option value="provedor">Ordenar por Provedor</option>
+            <option value="nivel">Ordenar por Nível</option>
+            <option value="certificacao">Ordenar por Certificação</option>
+            <option value="data">Ordenar por Data</option>
           </select>
         </div>
       </div>

@@ -22,7 +22,9 @@ export default function TabelaSalarial() {
   const [registros, setRegistros] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [filterCargo, setFilterCargo] = useState('');
+  const [filterNivel, setFilterNivel] = useState('');
   const [filterAno, setFilterAno] = useState('');
+  const [sortBy, setSortBy] = useState('nivel');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -39,12 +41,40 @@ export default function TabelaSalarial() {
       list = list.filter((r) => r.cargo === filterCargo);
     }
 
+    if (filterNivel) {
+      list = list.filter((r) => r.nivel === filterNivel);
+    }
+
     if (filterAno) {
       list = list.filter((r) => String(r.ano) === String(filterAno));
     }
 
+    // Ordenação
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'nivel':
+          if (a.nivel !== b.nivel) return a.nivel.localeCompare(b.nivel);
+          if (a.cargo !== b.cargo) return a.cargo.localeCompare(b.cargo);
+          return b.ano - a.ano;
+        case 'cargo':
+          if (a.cargo !== b.cargo) return a.cargo.localeCompare(b.cargo);
+          if (a.nivel !== b.nivel) return a.nivel.localeCompare(b.nivel);
+          return b.ano - a.ano;
+        case 'ano':
+          if (a.ano !== b.ano) return b.ano - a.ano;
+          if (a.cargo !== b.cargo) return a.cargo.localeCompare(b.cargo);
+          return a.nivel.localeCompare(b.nivel);
+        case 'salario-asc':
+          return (a.salarioBase || 0) - (b.salarioBase || 0);
+        case 'salario-desc':
+          return (b.salarioBase || 0) - (a.salarioBase || 0);
+        default:
+          return 0;
+      }
+    });
+
     setFilteredList(list);
-  }, [filterCargo, filterAno, registros]);
+  }, [filterCargo, filterNivel, filterAno, sortBy, registros]);
 
   async function fetchRegistros() {
     try {
@@ -149,6 +179,7 @@ export default function TabelaSalarial() {
 
   // Unique values for filters
   const cargosUnicos = [...new Set(registros.map((r) => r.cargo))].sort();
+  const niveisUnicos = [...new Set(registros.map((r) => r.nivel))].sort();
   const anosUnicos = [...new Set(registros.map((r) => r.ano))].sort((a, b) => b - a);
 
   if (loading) {
@@ -173,7 +204,7 @@ export default function TabelaSalarial() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
           <Search size={20} className="absolute left-3 top-2.5 text-gray-400" />
           <select
@@ -187,6 +218,19 @@ export default function TabelaSalarial() {
             ))}
           </select>
         </div>
+        <div className="relative">
+          <Search size={20} className="absolute left-3 top-2.5 text-gray-400" />
+          <select
+            value={filterNivel}
+            onChange={(e) => setFilterNivel(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
+          >
+            <option value="">Todos os níveis</option>
+            {niveisUnicos.map((nivel) => (
+              <option key={nivel} value={nivel}>{nivel}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <select
             value={filterAno}
@@ -197,6 +241,19 @@ export default function TabelaSalarial() {
             {anosUnicos.map((ano) => (
               <option key={ano} value={ano}>{ano}</option>
             ))}
+          </select>
+        </div>
+        <div className="ml-auto">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none bg-white"
+          >
+            <option value="nivel">Ordenar por Nível</option>
+            <option value="cargo">Ordenar por Cargo</option>
+            <option value="ano">Ordenar por Ano</option>
+            <option value="salario-asc">Salário (menor → maior)</option>
+            <option value="salario-desc">Salário (maior → menor)</option>
           </select>
         </div>
       </div>
