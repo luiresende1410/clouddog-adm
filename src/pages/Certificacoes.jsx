@@ -10,6 +10,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Award, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImportCSV from '../components/ImportCSV';
 
 const PROVEDOR_OPTIONS = ['AWS', 'Azure', 'Google Cloud', 'Terraform', 'Kubernetes', 'Datadog', 'Linux', 'Docker', 'Outro'];
 const NIVEL_OPTIONS = ['Foundational', 'Associate', 'Professional', 'Specialty', 'Expert'];
@@ -48,6 +49,62 @@ export default function Certificacoes() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+
+  const csvCampos = [
+    { key: 'colaboradorNome', label: 'Colaborador', required: true, example: 'João Silva' },
+    { key: 'nome', label: 'Certificação', required: true, example: 'AWS Solutions Architect' },
+    { key: 'provedor', label: 'Provedor', required: true, example: 'AWS' },
+    { key: 'nivel', label: 'Nível', required: false, example: 'Associate' },
+    { key: 'dataObtencao', label: 'Data Obtenção', required: true, example: '2024-06-15' },
+    { key: 'dataExpiracao', label: 'Data Expiração', required: false, example: '2027-06-15' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Buscar colaboradorId pelo nome
+      const colab = colaboradores.find(
+        (c) => c.nome.toLowerCase() === row.colaboradorNome?.toLowerCase()
+      );
+
+      // Verificar se já existe certificação com mesmo nome para o mesmo colaborador
+      const existing = certificacoes.find(
+        (c) =>
+          c.colaboradorNome?.toLowerCase() === row.colaboradorNome?.toLowerCase() &&
+          c.nome?.toLowerCase() === row.nome?.toLowerCase()
+      );
+
+      const data = {
+        colaboradorId: colab?.id || '',
+        colaboradorNome: colab?.nome || row.colaboradorNome || '',
+        nome: row.nome || '',
+        provedor: row.provedor || 'Outro',
+        nivel: row.nivel || 'Associate',
+        dataObtencao: row.dataObtencao || '',
+        dataExpiracao: row.dataExpiracao || '',
+      };
+
+      if (existing) {
+        await updateDoc(doc(db, 'certificacoes', existing.id), {
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+        updated++;
+      } else {
+        await addDoc(collection(db, 'certificacoes'), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        inserted++;
+      }
+    }
+
+    fetchCertificacoes();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchCertificacoes();
@@ -261,13 +318,21 @@ export default function Certificacoes() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Certificações</h2>
-        <button
-          onClick={openNewForm}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Nova Certificação
-        </button>
+        <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo="Importar Certificações"
+            templateFileName="certificacoes_template.csv"
+          />
+          <button
+            onClick={openNewForm}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Nova Certificação
+          </button>
+        </div>
       </div>
 
       {/* Summary */}

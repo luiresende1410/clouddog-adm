@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { FileText, Download, Users, Laptop, CreditCard, Calendar } from 'lucide-react';
+import { FileText, Download, Users, Laptop, CreditCard, Calendar, Award, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -23,6 +23,8 @@ export default function Relatorios() {
   const [equipamentos, setEquipamentos] = useState([]);
   const [beneficios, setBeneficios] = useState([]);
   const [ferias, setFerias] = useState([]);
+  const [certificacoes, setCertificacoes] = useState([]);
+  const [tabelaSalarial, setTabelaSalarial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mesBeneficio, setMesBeneficio] = useState(new Date().getMonth() + 1);
   const [anoBeneficio, setAnoBeneficio] = useState(new Date().getFullYear());
@@ -30,16 +32,20 @@ export default function Relatorios() {
   useEffect(() => {
     async function fetchAll() {
       try {
-        const [colabSnap, equipSnap, benSnap, ferSnap] = await Promise.all([
+        const [colabSnap, equipSnap, benSnap, ferSnap, certSnap, salSnap] = await Promise.all([
           getDocs(collection(db, 'colaboradores')),
           getDocs(collection(db, 'equipamentos')),
           getDocs(collection(db, 'beneficios')),
           getDocs(collection(db, 'ferias')),
+          getDocs(collection(db, 'certificacoes')),
+          getDocs(collection(db, 'tabelaSalarial')),
         ]);
         setColaboradores(colabSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setEquipamentos(equipSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setBeneficios(benSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setFerias(ferSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCertificacoes(certSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setTabelaSalarial(salSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (error) {
         toast.error('Erro ao carregar dados');
         console.error(error);
@@ -271,6 +277,130 @@ export default function Relatorios() {
     toast.success('Excel gerado!');
   }
 
+  // --- Exportar Certificações ---
+  function exportCertificacoesPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Relatório de Certificações', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} | Total: ${certificacoes.length}`, 14, 28);
+
+    const rows = certificacoes
+      .sort((a, b) => a.colaboradorNome.localeCompare(b.colaboradorNome))
+      .map((c) => {
+        let status = 'Permanente';
+        if (c.dataExpiracao) {
+          const exp = new Date(c.dataExpiracao);
+          const hoje = new Date();
+          if (exp < hoje) status = 'Expirada';
+          else if ((exp - hoje) / (1000 * 60 * 60 * 24) <= 90) status = 'Renovar em breve';
+          else status = 'Válida';
+        }
+        return [
+          c.colaboradorNome,
+          c.nome,
+          c.provedor,
+          c.nivel,
+          c.dataObtencao ? new Date(c.dataObtencao).toLocaleDateString('pt-BR') : '-',
+          c.dataExpiracao ? new Date(c.dataExpiracao).toLocaleDateString('pt-BR') : '-',
+          status,
+        ];
+      });
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Colaborador', 'Certificação', 'Provedor', 'Nível', 'Obtida', 'Expira', 'Status']],
+      body: rows,
+      styles: { fontSize: 7 },
+    });
+
+    doc.save('certificacoes.pdf');
+    toast.success('PDF gerado!');
+  }
+
+  function exportCertificacoesExcel() {
+    const data = certificacoes
+      .sort((a, b) => a.colaboradorNome.localeCompare(b.colaboradorNome))
+      .map((c) => {
+        let status = 'Permanente';
+        if (c.dataExpiracao) {
+          const exp = new Date(c.dataExpiracao);
+          const hoje = new Date();
+          if (exp < hoje) status = 'Expirada';
+          else if ((exp - hoje) / (1000 * 60 * 60 * 24) <= 90) status = 'Renovar em breve';
+          else status = 'Válida';
+        }
+        return {
+          Colaborador: c.colaboradorNome,
+          Certificação: c.nome,
+          Provedor: c.provedor,
+          Nível: c.nivel,
+          'Data Obtenção': c.dataObtencao || '',
+          'Data Expiração': c.dataExpiracao || '',
+          Status: status,
+        };
+      });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Certificações');
+    XLSX.writeFile(wb, 'certificacoes.xlsx');
+    toast.success('Excel gerado!');
+  }
+
+  // --- Exportar Tabela Salarial ---
+  function exportTabelaSalarialPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Relatório de Tabela Salarial', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} | Total: ${tabelaSalarial.length} registros`, 14, 28);
+
+    const rows = tabelaSalarial
+      .sort((a, b) => {
+        if (a.cargo !== b.cargo) return a.cargo.localeCompare(b.cargo);
+        if (a.nivel !== b.nivel) return a.nivel.localeCompare(b.nivel);
+        return b.ano - a.ano;
+      })
+      .map((r) => [
+        r.cargo,
+        r.nivel,
+        r.ano,
+        `R$ ${Number(r.salarioBase).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Cargo', 'Nível', 'Ano', 'Salário Base']],
+      body: rows,
+      styles: { fontSize: 8 },
+    });
+
+    doc.save('tabela-salarial.pdf');
+    toast.success('PDF gerado!');
+  }
+
+  function exportTabelaSalarialExcel() {
+    const data = tabelaSalarial
+      .sort((a, b) => {
+        if (a.cargo !== b.cargo) return a.cargo.localeCompare(b.cargo);
+        if (a.nivel !== b.nivel) return a.nivel.localeCompare(b.nivel);
+        return b.ano - a.ano;
+      })
+      .map((r) => ({
+        Cargo: r.cargo,
+        Nível: r.nivel,
+        Ano: r.ano,
+        'Salário Base': Number(r.salarioBase).toFixed(2),
+      }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tabela Salarial');
+    XLSX.writeFile(wb, 'tabela-salarial.xlsx');
+    toast.success('Excel gerado!');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -409,6 +539,64 @@ export default function Relatorios() {
             </button>
             <button
               onClick={exportFeriasExcel}
+              className="flex items-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
+            >
+              <Download size={16} />
+              Excel
+            </button>
+          </div>
+        </div>
+
+        {/* Certificações */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-indigo-100 p-2 rounded-lg">
+              <Award size={24} className="text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800">Certificações</h3>
+              <p className="text-sm text-gray-500">{certificacoes.length} registros</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={exportCertificacoesPDF}
+              className="flex items-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors text-sm"
+            >
+              <Download size={16} />
+              PDF
+            </button>
+            <button
+              onClick={exportCertificacoesExcel}
+              className="flex items-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
+            >
+              <Download size={16} />
+              Excel
+            </button>
+          </div>
+        </div>
+
+        {/* Tabela Salarial */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-yellow-100 p-2 rounded-lg">
+              <DollarSign size={24} className="text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800">Tabela Salarial</h3>
+              <p className="text-sm text-gray-500">{tabelaSalarial.length} registros</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={exportTabelaSalarialPDF}
+              className="flex items-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors text-sm"
+            >
+              <Download size={16} />
+              PDF
+            </button>
+            <button
+              onClick={exportTabelaSalarialExcel}
               className="flex items-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm"
             >
               <Download size={16} />

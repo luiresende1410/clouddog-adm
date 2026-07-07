@@ -10,6 +10,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Calendar, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImportCSV from '../components/ImportCSV';
 
 const STATUS_OPTIONS = ['Agendada', 'Em andamento', 'Concluída', 'Cancelada'];
 const TIPO_FERIAS = ['Férias', 'Emenda de Feriado'];
@@ -71,6 +72,63 @@ export default function Ferias() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saldos, setSaldos] = useState([]);
+
+  const csvCampos = [
+    { key: 'colaboradorNome', label: 'Colaborador', required: true, example: 'João Silva' },
+    { key: 'tipo', label: 'Tipo', required: false, example: 'Férias' },
+    { key: 'dataInicio', label: 'Data Início', required: true, example: '2025-01-06' },
+    { key: 'dataFim', label: 'Data Fim', required: true, example: '2025-01-25' },
+    { key: 'diasGozados', label: 'Dias Gozados', required: false, example: '20' },
+    { key: 'diasVendidos', label: 'Dias Vendidos', required: false, example: '10' },
+    { key: 'status', label: 'Status', required: false, example: 'Agendada' },
+    { key: 'observacoes', label: 'Observações', required: false, example: '' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Buscar colaboradorId pelo nome
+      const colab = colaboradores.find(
+        (c) => c.nome.toLowerCase() === row.colaboradorNome?.toLowerCase()
+      );
+
+      const data = {
+        colaboradorId: colab?.id || '',
+        colaboradorNome: row.colaboradorNome || '',
+        tipo: row.tipo || 'Férias',
+        dataInicio: row.dataInicio || '',
+        dataFim: row.dataFim || '',
+        diasGozados: Number(row.diasGozados) || calcDias(row.dataInicio, row.dataFim),
+        diasVendidos: Number(row.diasVendidos) || 0,
+        status: row.status || 'Agendada',
+        observacoes: row.observacoes || '',
+        periodoAquisitivoInicio: '',
+        periodoAquisitivoFim: '',
+      };
+
+      // Auto-preencher período aquisitivo
+      if (colab) {
+        const dataBase = colab.dataEfetivacao || colab.dataAdmissao;
+        if (dataBase) {
+          const periodo = calcPeriodoAquisitivo(dataBase);
+          if (periodo) {
+            data.periodoAquisitivoInicio = periodo.inicio;
+            data.periodoAquisitivoFim = periodo.fim;
+          }
+        }
+      }
+
+      data.createdAt = new Date().toISOString();
+      data.updatedAt = new Date().toISOString();
+      await addDoc(collection(db, 'ferias'), data);
+      inserted++;
+    }
+
+    fetchFerias();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchFerias();
@@ -338,6 +396,12 @@ export default function Ferias() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Controle de Férias</h2>
         <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo="Importar Férias"
+            templateFileName="ferias_template.csv"
+          />
           <button
             onClick={calcularSaldos}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"

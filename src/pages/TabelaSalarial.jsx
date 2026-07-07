@@ -10,6 +10,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImportCSV from '../components/ImportCSV';
 
 const emptyForm = {
   cargo: '',
@@ -29,6 +30,53 @@ export default function TabelaSalarial() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+
+  const csvCampos = [
+    { key: 'cargo', label: 'Cargo', required: true, example: 'Engenheiro de Software' },
+    { key: 'nivel', label: 'Nível', required: true, example: 'L5' },
+    { key: 'ano', label: 'Ano', required: true, example: '2025' },
+    { key: 'salarioBase', label: 'Salário Base', required: true, example: '12000.00' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Verificar se já existe registro com mesmo cargo + nível + ano
+      const existing = registros.find(
+        (r) =>
+          r.cargo?.toLowerCase() === row.cargo?.toLowerCase() &&
+          r.nivel?.toLowerCase() === row.nivel?.toLowerCase() &&
+          String(r.ano) === String(row.ano)
+      );
+
+      const data = {
+        cargo: row.cargo?.trim() || '',
+        nivel: row.nivel?.trim() || '',
+        ano: Number(row.ano) || new Date().getFullYear(),
+        salarioBase: Number(row.salarioBase) || 0,
+      };
+
+      if (existing) {
+        await updateDoc(doc(db, 'tabelaSalarial', existing.id), {
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+        updated++;
+      } else {
+        await addDoc(collection(db, 'tabelaSalarial'), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        inserted++;
+      }
+    }
+
+    fetchRegistros();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchRegistros();
@@ -194,13 +242,21 @@ export default function TabelaSalarial() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Tabela Salarial</h2>
-        <button
-          onClick={openNewForm}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Novo Registro
-        </button>
+        <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo="Importar Tabela Salarial"
+            templateFileName="tabela_salarial_template.csv"
+          />
+          <button
+            onClick={openNewForm}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Novo Registro
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

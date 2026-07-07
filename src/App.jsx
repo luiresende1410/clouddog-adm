@@ -21,7 +21,7 @@ import TabelaSalarial from './pages/TabelaSalarial';
 
 export default function App() {
   return (
-    <BrowserRouter basename="/clouddog-adm">
+    <BrowserRouter>
       <AuthProvider>
         <Toaster position="top-right" />
         <Routes>

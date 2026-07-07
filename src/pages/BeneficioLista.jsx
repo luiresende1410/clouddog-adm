@@ -10,6 +10,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Calculator, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImportCSV from '../components/ImportCSV';
 
 function getDiasUteisNoMes(ano, mes) {
   let count = 0;
@@ -44,6 +45,63 @@ export default function BeneficioLista({ tipoBeneficio, titulo }) {
   const [calcMes, setCalcMes] = useState(new Date().getMonth() + 1);
   const [calcAno, setCalcAno] = useState(new Date().getFullYear());
   const [calcResult, setCalcResult] = useState([]);
+
+  const csvCampos = [
+    { key: 'colaboradorNome', label: 'Colaborador', required: true, example: 'João Silva' },
+    { key: 'valorDiario', label: 'Valor Diário', required: false, example: '15.50' },
+    { key: 'valorMensal', label: 'Valor Mensal', required: true, example: '341.00' },
+    { key: 'dataInicio', label: 'Data Início', required: false, example: '2024-01-01' },
+    { key: 'dataFim', label: 'Data Fim', required: false, example: '' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Buscar colaboradorId pelo nome
+      const colab = colaboradores.find(
+        (c) => c.nome.toLowerCase() === row.colaboradorNome?.toLowerCase()
+      );
+
+      // Verificar se já existe benefício do mesmo tipo para o colaborador
+      const existing = beneficios.find(
+        (b) => b.colaboradorNome?.toLowerCase() === row.colaboradorNome?.toLowerCase()
+      );
+
+      const valorMensal = parseFloat(row.valorMensal) || 0;
+      const valorDiario = parseFloat(row.valorDiario) || (valorMensal / 22);
+
+      const data = {
+        colaboradorId: colab?.id || '',
+        colaboradorNome: colab?.nome || row.colaboradorNome || '',
+        tipo: tipoBeneficio,
+        valorDiario,
+        valorMensal,
+        dataInicio: row.dataInicio || '',
+        dataFim: row.dataFim || '',
+        ativo: true,
+      };
+
+      if (existing) {
+        await updateDoc(doc(db, 'beneficios', existing.id), {
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+        updated++;
+      } else {
+        await addDoc(collection(db, 'beneficios'), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        inserted++;
+      }
+    }
+
+    fetchBeneficios();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchBeneficios();
@@ -229,6 +287,12 @@ export default function BeneficioLista({ tipoBeneficio, titulo }) {
           <span className="text-sm text-gray-500">{beneficios.length} colaboradores</span>
         </div>
         <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo={`Importar ${titulo}`}
+            templateFileName={`${tipoBeneficio.toLowerCase()}_template.csv`}
+          />
           <button
             onClick={calcularMes}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"

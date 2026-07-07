@@ -11,6 +11,7 @@ import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ImportCSV from '../components/ImportCSV';
 
 const STATUS_OPTIONS = ['ativo', 'inativo', 'afastado', 'ferias'];
 const CONTRATO_OPTIONS = ['CLT', 'PJ', 'Estágio', 'Temporário'];
@@ -49,6 +50,60 @@ export default function Colaboradores() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+
+  const csvCampos = [
+    { key: 'nome', label: 'Nome', required: true, example: 'João Silva' },
+    { key: 'email', label: 'E-mail', required: true, example: 'joao@clouddog.com.br' },
+    { key: 'cargo', label: 'Cargo', required: true, example: 'Engenheiro de Software' },
+    { key: 'setor', label: 'Setor', required: false, example: 'Engenharia' },
+    { key: 'gestor', label: 'Gestor', required: false, example: 'Maria Souza' },
+    { key: 'dataAdmissao', label: 'Data Admissão', required: false, example: '2024-01-15' },
+    { key: 'dataEfetivacao', label: 'Data Efetivação', required: false, example: '2024-07-15' },
+    { key: 'tipoContrato', label: 'Tipo Contrato', required: false, example: 'CLT' },
+    { key: 'status', label: 'Status', required: false, example: 'ativo' },
+    { key: 'telefone', label: 'Telefone', required: false, example: '(11) 99999-9999' },
+    { key: 'linkedin', label: 'LinkedIn', required: false, example: 'https://linkedin.com/in/joao' },
+    { key: 'github', label: 'GitHub', required: false, example: 'https://github.com/joao' },
+    { key: 'credly', label: 'Credly', required: false, example: '' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Tentar encontrar colaborador pelo email para atualizar
+      const existing = colaboradores.find(
+        (c) => c.email && c.email.toLowerCase() === row.email?.toLowerCase()
+      );
+
+      if (existing) {
+        const updateData = {};
+        Object.entries(row).forEach(([key, value]) => {
+          if (value && value.trim() !== '') {
+            updateData[key] = value.trim();
+          }
+        });
+        updateData.updatedAt = new Date().toISOString();
+        await updateDoc(doc(db, 'colaboradores', existing.id), updateData);
+        updated++;
+      } else {
+        const newData = { ...emptyForm };
+        Object.entries(row).forEach(([key, value]) => {
+          if (value && value.trim() !== '') {
+            newData[key] = value.trim();
+          }
+        });
+        newData.createdAt = new Date().toISOString();
+        newData.updatedAt = new Date().toISOString();
+        await addDoc(collection(db, 'colaboradores'), newData);
+        inserted++;
+      }
+    }
+
+    fetchColaboradores();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchColaboradores();
@@ -214,13 +269,21 @@ export default function Colaboradores() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Colaboradores</h2>
-        <button
-          onClick={openNewForm}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Novo Colaborador
-        </button>
+        <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo="Importar Colaboradores"
+            templateFileName="colaboradores_template.csv"
+          />
+          <button
+            onClick={openNewForm}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Novo Colaborador
+          </button>
+        </div>
       </div>
 
       {/* Search */}

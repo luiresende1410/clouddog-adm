@@ -12,6 +12,7 @@ import {
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Laptop, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImportCSV from '../components/ImportCSV';
 
 const TIPO_OPTIONS_DEFAULT = ['Notebook', 'Monitor', 'Headset', 'Teclado', 'Mouse', 'Webcam', 'Docking Station', 'Cadeira', 'Outro'];
 const ESTADO_OPTIONS = ['Novo', 'Bom', 'Regular', 'Ruim', 'Manutenção'];
@@ -42,6 +43,70 @@ export default function Equipamentos() {
   const [tipoOptions, setTipoOptions] = useState(TIPO_OPTIONS_DEFAULT);
   const [showTipoConfig, setShowTipoConfig] = useState(false);
   const [newTipo, setNewTipo] = useState('');
+
+  const csvCampos = [
+    { key: 'tipo', label: 'Tipo', required: true, example: 'Notebook' },
+    { key: 'marca', label: 'Marca', required: true, example: 'Dell' },
+    { key: 'modelo', label: 'Modelo', required: false, example: 'Latitude 5520' },
+    { key: 'numeroSerie', label: 'Nº Série', required: false, example: 'SN123456' },
+    { key: 'patrimonio', label: 'Patrimônio', required: false, example: 'PAT-001' },
+    { key: 'colaboradorNome', label: 'Colaborador', required: false, example: 'João Silva' },
+    { key: 'dataRetirada', label: 'Data Retirada', required: false, example: '2024-03-01' },
+    { key: 'dataDevolucao', label: 'Data Devolução', required: false, example: '' },
+    { key: 'estado', label: 'Estado', required: false, example: 'Novo' },
+    { key: 'observacoes', label: 'Observações', required: false, example: '' },
+  ];
+
+  async function handleCSVImport(rows) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      // Tentar encontrar equipamento pelo patrimônio ou número de série para atualizar
+      const existing = equipamentos.find(
+        (e) =>
+          (row.patrimonio && e.patrimonio && e.patrimonio.toLowerCase() === row.patrimonio.toLowerCase()) ||
+          (row.numeroSerie && e.numeroSerie && e.numeroSerie.toLowerCase() === row.numeroSerie.toLowerCase())
+      );
+
+      // Buscar colaboradorId pelo nome
+      const colab = row.colaboradorNome
+        ? colaboradores.find((c) => c.nome.toLowerCase() === row.colaboradorNome.toLowerCase())
+        : null;
+
+      const data = {
+        tipo: row.tipo || 'Notebook',
+        marca: row.marca || '',
+        modelo: row.modelo || '',
+        numeroSerie: row.numeroSerie || '',
+        patrimonio: row.patrimonio || '',
+        colaboradorId: colab?.id || '',
+        colaboradorNome: colab?.nome || row.colaboradorNome || '',
+        dataRetirada: row.dataRetirada || '',
+        dataDevolucao: row.dataDevolucao || '',
+        estado: row.estado || 'Novo',
+        observacoes: row.observacoes || '',
+      };
+
+      if (existing) {
+        await updateDoc(doc(db, 'equipamentos', existing.id), {
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+        updated++;
+      } else {
+        await addDoc(collection(db, 'equipamentos'), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        inserted++;
+      }
+    }
+
+    fetchEquipamentos();
+    return { inserted, updated, skipped: 0 };
+  }
 
   useEffect(() => {
     fetchEquipamentos();
@@ -247,6 +312,12 @@ export default function Equipamentos() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Equipamentos</h2>
         <div className="flex gap-3">
+          <ImportCSV
+            campos={csvCampos}
+            onImport={handleCSVImport}
+            titulo="Importar Equipamentos"
+            templateFileName="equipamentos_template.csv"
+          />
           <button
             onClick={() => setShowTipoConfig(true)}
             className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
