@@ -8,7 +8,7 @@ import {
   doc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Pencil, Trash2, Search, X, Award, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Award, Filter, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ImportCSV from '../components/ImportCSV';
 
@@ -184,6 +184,37 @@ export default function Certificacoes() {
     }
   }
 
+  async function sincronizarVinculos() {
+    // Buscar certificações sem colaboradorId mas com colaboradorNome
+    const orfas = certificacoes.filter((c) => !c.colaboradorId && c.colaboradorNome);
+    if (orfas.length === 0) {
+      toast.success('Todas as certificações já estão vinculadas!');
+      return;
+    }
+
+    let vinculadas = 0;
+    for (const cert of orfas) {
+      const colab = colaboradores.find(
+        (c) => c.nome.toLowerCase() === cert.colaboradorNome.toLowerCase()
+      );
+      if (colab) {
+        await updateDoc(doc(db, 'certificacoes', cert.id), {
+          colaboradorId: colab.id,
+          colaboradorNome: colab.nome,
+          updatedAt: new Date().toISOString(),
+        });
+        vinculadas++;
+      }
+    }
+
+    if (vinculadas > 0) {
+      toast.success(`${vinculadas} certificação(ões) vinculada(s) com sucesso!`);
+      fetchCertificacoes();
+    } else {
+      toast.error('Nenhuma correspondência encontrada. Verifique se os nomes batem exatamente.');
+    }
+  }
+
   function handleChange(e) {
     const { name, value } = e.target;
     if (name === 'colaboradorId') {
@@ -325,6 +356,14 @@ export default function Certificacoes() {
             titulo="Importar Certificações"
             templateFileName="certificacoes_template.csv"
           />
+          <button
+            onClick={sincronizarVinculos}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+            title="Vincular certificações órfãs a colaboradores pelo nome"
+          >
+            <Link2 size={20} />
+            Sincronizar Vínculos
+          </button>
           <button
             onClick={openNewForm}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

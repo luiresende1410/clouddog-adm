@@ -6,6 +6,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Pencil, Trash2, Search, X, Eye } from 'lucide-react';
@@ -203,6 +205,8 @@ export default function Colaboradores() {
     }
 
     try {
+      let colabId = editingId;
+
       if (editingId) {
         await updateDoc(doc(db, 'colaboradores', editingId), {
           ...form,
@@ -210,13 +214,17 @@ export default function Colaboradores() {
         });
         toast.success('Colaborador atualizado!');
       } else {
-        await addDoc(collection(db, 'colaboradores'), {
+        const docRef = await addDoc(collection(db, 'colaboradores'), {
           ...form,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
+        colabId = docRef.id;
         toast.success('Colaborador cadastrado!');
       }
+
+      // Vincular certificações órfãs automaticamente
+      await vincularCertificacoesOrfas(colabId, form.nome.trim());
 
       setShowForm(false);
       setForm(emptyForm);
@@ -225,6 +233,31 @@ export default function Colaboradores() {
     } catch (error) {
       toast.error('Erro ao salvar colaborador');
       console.error(error);
+    }
+  }
+
+  async function vincularCertificacoesOrfas(colabId, nome) {
+    try {
+      const certSnap = await getDocs(collection(db, 'certificacoes'));
+      const orfas = certSnap.docs
+        .filter((d) => {
+          const data = d.data();
+          return !data.colaboradorId && data.colaboradorNome?.toLowerCase() === nome.toLowerCase();
+        });
+
+      for (const certDoc of orfas) {
+        await updateDoc(doc(db, 'certificacoes', certDoc.id), {
+          colaboradorId: colabId,
+          colaboradorNome: nome,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      if (orfas.length > 0) {
+        toast.success(`${orfas.length} certificação(ões) vinculada(s) automaticamente!`);
+      }
+    } catch (error) {
+      console.error('Erro ao vincular certificações:', error);
     }
   }
 
