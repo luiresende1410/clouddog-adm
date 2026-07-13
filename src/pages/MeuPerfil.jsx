@@ -30,6 +30,7 @@ export default function MeuPerfil() {
   const [dados, setDados] = useState(null);
   const [ferias, setFerias] = useState([]);
   const [beneficios, setBeneficios] = useState([]);
+  const [certificacoes, setCertificacoes] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -68,6 +69,13 @@ export default function MeuPerfil() {
           const histList = histSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
           histList.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
           setHistorico(histList);
+
+          // Buscar certificações
+          const certQuery = query(collection(db, 'certificacoes'), where('colaboradorId', '==', colabData.id));
+          const certSnap = await getDocs(certQuery);
+          const certList = certSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          certList.sort((a, b) => (b.dataObtencao || '').localeCompare(a.dataObtencao || ''));
+          setCertificacoes(certList);
         }
       } catch (error) {
         console.error('Erro ao buscar dados:', error);
@@ -298,6 +306,63 @@ export default function MeuPerfil() {
                 <span className="text-sm font-medium text-gray-800">Currículo (PDF)</span>
               </a>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Certificações */}
+      {certificacoes.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Award size={20} className="text-purple-600" />
+            Minhas Certificações ({certificacoes.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {certificacoes.map((cert) => {
+              let status = 'Permanente';
+              let statusColor = 'bg-blue-100 text-blue-800';
+              if (cert.dataExpiracao) {
+                const exp = new Date(cert.dataExpiracao);
+                const hoje = new Date();
+                if (exp < hoje) { status = 'Expirada'; statusColor = 'bg-red-100 text-red-800'; }
+                else if ((exp - hoje) / (1000 * 60 * 60 * 24) <= 90) { status = 'Renovar em breve'; statusColor = 'bg-yellow-100 text-yellow-800'; }
+                else { status = 'Válida'; statusColor = 'bg-green-100 text-green-800'; }
+              }
+
+              const provedorColors = {
+                AWS: 'bg-orange-100 text-orange-800',
+                Azure: 'bg-blue-100 text-blue-800',
+                'Google Cloud': 'bg-green-100 text-green-800',
+                Terraform: 'bg-purple-100 text-purple-800',
+                Kubernetes: 'bg-indigo-100 text-indigo-800',
+              };
+
+              return (
+                <div key={cert.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Award size={20} className="text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{cert.nome}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${provedorColors[cert.provedor] || 'bg-gray-100 text-gray-800'}`}>
+                        {cert.provedor}
+                      </span>
+                      <span className="text-xs text-gray-500">{cert.nivel}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                        {status}
+                      </span>
+                    </div>
+                    {cert.dataObtencao && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Obtida em {new Date(cert.dataObtencao).toLocaleDateString('pt-BR')}
+                        {cert.dataExpiracao && ` · Expira em ${new Date(cert.dataExpiracao).toLocaleDateString('pt-BR')}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
